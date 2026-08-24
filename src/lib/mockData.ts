@@ -109,12 +109,17 @@ export function submitRegistration(
 ): Promise<{ ok: true; registration: Registration } | { ok: false; error: string }> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const tour = getTourById(input.tourId)!;
+    const tour = getTourById(input.tourId);
 
-      if (tour.registeredCount >= tour.maxCapacity) {
-        resolve({ ok: false, error: "Tour đã đầy, vui lòng chọn tour khác." });
+    if (!tour) {
+      resolve({ ok: false, error: "Tour not found." });
         return;
       }
+
+    if (tour.registeredCount >= tour.maxCapacity) {
+      resolve({ ok: false, error: "Tour đã đầy, vui lòng chọn tour khác." });
+      return;
+    }
 
       tour.registeredCount += 1;
 
