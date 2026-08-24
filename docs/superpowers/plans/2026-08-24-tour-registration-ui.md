@@ -10,6 +10,7 @@
 
 ## Global Constraints
 
+- **Mobile-first, fully responsive:** this site is used on mobile more than desktop. Design and build every screen mobile-first (base Tailwind classes target small screens, `md:`/`lg:` breakpoints layer on enhancements for larger viewports). Verify every task's manual QA on a mobile viewport (browser dev tools device toolbar, e.g. ~375px width) as well as desktop width, not desktop-only.
 - Employee-facing copy must match `requirements.md` exactly, including the red error message in §2.1: "User nhân viên không nằm trong danh sách đăng ký tham gia Du Lịch, vui lòng liên hệ Hoàng DM - 24776 để được hỗ trợ."
 - Đà Lạt: 1 tour, max 750 capacity. Nha Trang: 4 tours (28/09–30/09, 07/10–09/10, 19/10–21/10, 21/10–23/10), max 450 capacity each.
 - Companions: max 2 children (<10y) + 2 adults (≥10y) per registration; age classification is derived from DOB.
@@ -367,7 +368,7 @@ git commit -m "feat: implement welcome/MSNV verification screen"
 - Each card shows: tour name, destination, date range (`startDate`–`endDate`), a placeholder image (`imageUrl`, use a static placeholder path like `/placeholder-tour.jpg`), and a capacity badge reading `"Còn lại {maxCapacity - registeredCount}/{maxCapacity} chỗ"` (shadcn `Badge`).
 - A "Xem lịch trình Tour / Địa điểm du lịch (PDF)" link/button per card that opens `pdfUrl` in a new tab (`target="_blank" rel="noopener noreferrer"`).
 - A "Đăng ký" button per card. If the tour is full (`registeredCount >= maxCapacity`), this button is disabled and shows "Đã hết chỗ" instead, so the full-tour edge case (mock data includes one) is visible without needing Screen 3's submit-time check.
-- Layout: Đà Lạt renders exactly 1 card; Nha Trang renders 4 cards in a responsive grid (Tailwind `grid grid-cols-1 md:grid-cols-2 gap-4`).
+- Layout: Đà Lạt renders exactly 1 card; Nha Trang renders 4 cards in a responsive grid — single column by default (mobile), 2 columns from `md:` up (Tailwind `grid grid-cols-1 md:grid-cols-2 gap-4`). Cards must remain fully readable and tappable at ~375px width (no horizontal overflow, touch-friendly button sizing).
 
 - [ ] **Step 1: Install needed shadcn components**
 
@@ -415,7 +416,7 @@ git commit -m "feat: implement tour selection screen"
   - Shared form schema (zod), defined in `RegistrationFormScreen.tsx` and exported as `type RegistrationFormValues`, used by all three child components: `{ companions: Array<{ fullName: string; dob: string; gender: "male" | "female"; relationship: string }>; transportMethod: TransportMethod; pickupPoint: PickupPoint | null; confirmed: boolean }`.
 
 **What the form needs:**
-- **Companions section:** "+ Thêm người thân" button (shadcn `Button` variant `outline`) appends a blank companion row, up to a combined max of 2 "child" + 2 "adult" (computed live via `classifyAge` on each row's `dob` as it's filled in — once 2 rows classify as child, disable adding more until an adult slot is still open, and vice versa; the "+ Thêm người thân" button disables entirely once both caps (2+2) are reached). Each row: full name (`Input`), DOB (`Input type="date"`), gender (shadcn `Select` or `RadioGroup`: Nam/Nữ), relationship (`Input` or `Select` with common values: Vợ/Chồng, Con, Bố/Mẹ, Khác), and a remove button (shadcn `Button` variant `ghost`, icon).
+- **Companions section:** "+ Thêm người thân" button (shadcn `Button` variant `outline`) appends a blank companion row, up to a combined max of 2 "child" + 2 "adult" (computed live via `classifyAge` on each row's `dob` as it's filled in — once 2 rows classify as child, disable adding more until an adult slot is still open, and vice versa; the "+ Thêm người thân" button disables entirely once both caps (2+2) are reached). Each row: full name (`Input`), DOB (`Input type="date"`), gender (shadcn `Select` or `RadioGroup`: Nam/Nữ), relationship (`Input` or `Select` with common values: Vợ/Chồng, Con, Bố/Mẹ, Khác), and a remove button (shadcn `Button` variant `ghost`, icon). On mobile, stack each companion row's fields in a single column (full-width inputs) rather than a multi-column grid; a `md:` grid (e.g. 2 columns) can be used at wider viewports.
 - **Transport section:** shadcn `RadioGroup` with two options ("Tự túc theo Tour Công ty" / "Di chuyển theo Xe Tour"). When "Di chuyển theo Xe Tour" is selected, reveal a `Select` dropdown of the 7 pickup provinces from Global Constraints, required in that case (validated by the zod schema's `.refine()`).
 - **Pricing summary:** a simple bordered panel (shadcn `Card`) listing: "Chi phí Nhân viên: 0 VNĐ", one line per companion ("{fullName} ({adult|child}): {price} VNĐ"), and a bold "TỔNG TIỀN DỰ KIẾN: {total} VNĐ" line, recalculated on every form value change via `calculateTotal`.
 - **Confirmation:** a shadcn `Checkbox` labeled "Tôi đã kiểm tra đầy đủ và xác nhận thông tin chính xác." — the "Xác nhận thông tin chính xác" submit button (shadcn `Button`) stays disabled until this is checked and the rest of the form validates.
@@ -468,7 +469,7 @@ Render `<RegistrationFormScreen employee={employee} tour={selectedTour} onSubmit
 
 - [ ] **Step 8: Manual verification**
 
-Run: `npm run dev`, walk through Screens 1→2→3: add companions until hitting the 2 child + 2 adult cap (verify the add button disables correctly), toggle transport method and confirm the pickup dropdown appears/disappears and is required, watch the pricing summary update live, confirm the submit button stays disabled until the checkbox is ticked, submit and confirm it advances to the ticket step placeholder. Then re-run the flow selecting the seeded full Nha Trang tour and confirm the submit shows the "Tour đã đầy" error (this can only be reached by temporarily allowing selection of a full tour's card in `TourSelectionScreen`, since Task 5 already disables that button — verify this rejection path directly via a temporary `submitRegistration` call in the browser console instead if the UI path is blocked, then remove the console test).
+Run: `npm run dev`, walk through Screens 1→2→3: add companions until hitting the 2 child + 2 adult cap (verify the add button disables correctly), toggle transport method and confirm the pickup dropdown appears/disappears and is required, watch the pricing summary update live, confirm the submit button stays disabled until the checkbox is ticked, submit and confirm it advances to the ticket step placeholder. Repeat this walkthrough at a ~375px mobile viewport (browser dev tools device toolbar) to confirm all fields, buttons, and the pricing summary remain fully visible and usable without horizontal scrolling. Then re-run the flow selecting the seeded full Nha Trang tour and confirm the submit shows the "Tour đã đầy" error (this can only be reached by temporarily allowing selection of a full tour's card in `TourSelectionScreen`, since Task 5 already disables that button — verify this rejection path directly via a temporary `submitRegistration` call in the browser console instead if the UI path is blocked, then remove the console test).
 
 - [ ] **Step 9: Commit**
 
@@ -498,7 +499,7 @@ git commit -m "feat: implement registration form with companions, transport, and
 - An info table/panel with rows: "Mã số Nhân viên" → `employee.id`, "Bộ phận" → `employee.department`, "Siêu thị" → `employee.store`, "Tên Tour" → `tour.name`, "Ngày khởi hành" → `tour.startDate`, "Địa điểm đón" → `registration.pickupPoint ?? "Tự túc"`.
 - A tagline block with the 3 marketing lines from the mock ("VƯỢT ĐỈNH IPO VƯƠN TẦM KHU VỰC", "MỖI NĂM VƯỢT TRỘI", "5 NĂM NHÂN ĐÔI GIÁ TRỊ") and the closing welcome sentence.
 - Below the ticket: a "Tải ảnh vé (.png)" button (shadcn `Button`) that captures the ticket ref via `html-to-image`'s `toPng()` and triggers a browser download named `ve-moi-{employee.id}.png`.
-- `ticket.less` handles the ticket's card border, background gradient/color blocking, and the internal info-table grid layout (rows with label/value columns) — the pieces that are awkward to express as pure Tailwind utility strings; everything else on the page (button, spacing around the card) stays Tailwind.
+- `ticket.less` handles the ticket's card border, background gradient/color blocking, and the internal info-table grid layout (rows with label/value columns) — the pieces that are awkward to express as pure Tailwind utility strings; everything else on the page (button, spacing around the card) stays Tailwind. The ticket must render legibly on a ~375px-wide mobile viewport (this is also important because `html-to-image` captures the ticket at its rendered DOM size, so the exported PNG should look correct at mobile widths, not just desktop) — use `max-width: 100%` and fluid units inside `ticket.less` rather than fixed desktop-only pixel widths.
 
 - [ ] **Step 1: Install `html-to-image`**
 
@@ -555,7 +556,7 @@ Render `<TicketScreen employee={employee} registration={registration} />` when `
 
 - [ ] **Step 6: Manual verification**
 
-Run: `npm run dev`, complete the full flow to the ticket screen, confirm the layout matches the mock's structure (logos row, title, name, info table, tagline), click "Tải ảnh vé (.png)" and confirm a PNG file downloads with the correct filename and visually matches the on-screen ticket. Also verify the "already registered" path from Task 4 (re-enter an MSNV with an existing mock registration) lands directly on this same ticket screen with correct data.
+Run: `npm run dev`, complete the full flow to the ticket screen, confirm the layout matches the mock's structure (logos row, title, name, info table, tagline), click "Tải ảnh vé (.png)" and confirm a PNG file downloads with the correct filename and visually matches the on-screen ticket. Repeat at a ~375px mobile viewport and confirm the ticket card stays within the screen width (no overflow) and the downloaded PNG still looks correct when captured at that width. Also verify the "already registered" path from Task 4 (re-enter an MSNV with an existing mock registration) lands directly on this same ticket screen with correct data.
 
 - [ ] **Step 7: Commit**
 
@@ -587,8 +588,8 @@ git commit -m "feat: implement event ticket screen with PNG download"
 
 **What each panel needs:**
 - **`EmployeeImportPanel`:** a file input accepting `.xlsx`, a "Import" button that parses the file with the `xlsx` library (`read`/`utils.sheet_to_json`) into rows matching columns MSNV/Họ tên/Bộ phận/Siêu thị/Điểm đến, maps them to `Omit<Employee, never>`-shaped objects, calls `importEmployees(rows)`, and displays a summary ("Đã import {imported} nhân viên") plus a list of any per-row errors returned.
-- **`TourConfigTable`:** a shadcn `Table` listing all 5 tours (via `getAllTours()`) with editable `Input` cells for `maxCapacity`, `adultPrice`, `childPrice` per row, and a "Lưu" button per row that calls `updateTourConfig(tour.id, { maxCapacity, adultPrice, childPrice })` and shows a brief success toast/inline confirmation.
-- **`RegistrationsTable`:** a shadcn `Table` listing all registrations (via `getAllRegistrationsWithDetails()`) with columns: MSNV, Họ tên, Tour, Số người lớn đi kèm, Số trẻ em đi kèm, Tổng tiền, Ngày đăng ký. An "Xuất Excel" button that uses the `xlsx` library (`utils.json_to_sheet` + `writeFile`) to generate and download an `.xlsx` file client-side from the same data (mock-only client-side export for now; the backend-wiring plan moves this behind a serverless function using the service-role key, per the spec).
+- **`TourConfigTable`:** a shadcn `Table` listing all 5 tours (via `getAllTours()`) with editable `Input` cells for `maxCapacity`, `adultPrice`, `childPrice` per row, and a "Lưu" button per row that calls `updateTourConfig(tour.id, { maxCapacity, adultPrice, childPrice })` and shows a brief success toast/inline confirmation. Wrap the table in a horizontally scrollable container (Tailwind `overflow-x-auto`) so it stays usable on narrow mobile screens without breaking layout.
+- **`RegistrationsTable`:** a shadcn `Table` listing all registrations (via `getAllRegistrationsWithDetails()`) with columns: MSNV, Họ tên, Tour, Số người lớn đi kèm, Số trẻ em đi kèm, Tổng tiền, Ngày đăng ký. An "Xuất Excel" button that uses the `xlsx` library (`utils.json_to_sheet` + `writeFile`) to generate and download an `.xlsx` file client-side from the same data (mock-only client-side export for now; the backend-wiring plan moves this behind a serverless function using the service-role key, per the spec). Also wrap this table in `overflow-x-auto` for mobile usability.
 
 - [ ] **Step 1: Install `xlsx` and shadcn table/tabs components**
 
@@ -630,6 +631,7 @@ git commit -m "feat: implement admin page with employee import, tour config, and
 - Screen 4 (ticket layout matching mock, PNG download) → Task 7. ✓
 - Admin: login, employee Excel import, tour capacity/pricing config, registrations view + Excel export → Task 8. ✓
 - Tailwind design tokens + Less for the ticket → Tasks 1 & 7. ✓
+- Mobile-first responsive design (primary usage is mobile) → Global Constraints + explicit mobile-viewport checks in Tasks 5, 6, 7, 8. ✓
 - UI-only scope (mock data, no real Supabase/serverless calls) → enforced throughout via `src/lib/mockData.ts` as the single seam. ✓
 
 **Placeholder scan:** no "TBD"/"TODO"/"handle edge cases" phrasing found; every step has concrete code, exact copy strings, or a fully described UI structure per the user's request to keep UI descriptions at the "what's in the view" level rather than full JSX.
