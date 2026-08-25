@@ -21,6 +21,21 @@ is available in this environment — all Supabase/Vercel-side setup steps
 (running migrations, setting env vars, connecting the Vercel project) are
 executed manually by the user following the checklist in §6.
 
+**Existing scaffolding to build on:** `@supabase/supabase-js` and
+`@supabase/ssr` are already added to `package.json`, and
+`src/lib/supabase/client.ts` (browser client via `createBrowserClient`)
+already exists and is reused as-is for the client-side reads (`tours`
+table, `find_employee_by_id`, `get_registration_by_employee` RPCs). The
+existing `src/lib/supabase/server.ts` was scaffolded for Supabase
+Auth-style SSR cookie sync (`createServerClient` + `parseCookieHeader`),
+which doesn't match this design's server-side needs — the serverless
+functions use a plain service-role client (`createClient` from
+`@supabase/supabase-js`, no cookie syncing) since privileged access is
+authorized by the service-role key itself, not a Supabase Auth session.
+The implementation plan replaces `server.ts`'s contents with this
+service-role client factory (same file path, new implementation) rather
+than adding a separate file.
+
 ## 2. Data Access Security Model
 
 Refining the original spec's "frontend reads directly via the Supabase JS
@@ -151,9 +166,9 @@ a Promise). Affected call-sites:
 
 | Variable | Exposed to browser? | Used by |
 |---|---|---|
-| `VITE_SUPABASE_URL` | Yes (public, safe) | client Supabase JS |
-| `VITE_SUPABASE_ANON_KEY` | Yes (public, safe — protected by RLS) | client Supabase JS |
-| `SUPABASE_SERVICE_ROLE_KEY` | **No, server-only** | all `/api/*` functions |
+| `VITE_SUPABASE_URL` | Yes (public, safe) | client Supabase JS (`src/lib/supabase/client.ts`) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Yes (public, safe — protected by RLS) | client Supabase JS (matches the name already used in the existing `client.ts` scaffold) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **No, server-only** | all `/api/*` functions (service-role client, replacing `server.ts`) |
 | `ADMIN_PASSWORD` | **No, server-only** | `/api/admin/login` |
 | `ADMIN_SESSION_SECRET` | **No, server-only** | signing/verifying the admin session cookie |
 
