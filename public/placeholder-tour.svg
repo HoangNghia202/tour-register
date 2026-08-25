@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" role="img" aria-label="Tour placeholder">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7C3AED" />
+      <stop offset="1" stop-color="#EA580C" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#g)" />
+  <g fill="#ffffff" opacity="0.92">
+    <path d="M0 380 L180 250 L320 340 L520 190 L680 300 L800 220 L800 500 L0 500 Z" opacity="0.35" />
+    <circle cx="650" cy="120" r="56" opacity="0.85" />
+    <path d="M120 430 L300 300 L440 400 L620 260 L800 360 L800 500 L120 500 Z" opacity="0.55" />
+  </g>
+  <text x="400" y="270" fill="#ffffff" font-family="system-ui, sans-serif" font-size="44" font-weight="700" text-anchor="middle">Tour Du Lịch 2026</text>
+</svg>

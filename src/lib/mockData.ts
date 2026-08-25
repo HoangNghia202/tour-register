@@ -30,7 +30,7 @@ const tours: Tour[] = [
     adultPrice: 2500000,
     childPrice: 1200000,
     pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    imageUrl: "https://placehold.co/800x500/png?text=%C4%90%C3%A0+L%E1%BA%A1t+1",
+    imageUrl: "/placeholder-tour.svg",
   },
   {
     id: "nha-trang-1",
@@ -43,7 +43,7 @@ const tours: Tour[] = [
     adultPrice: 2850000,
     childPrice: 1400000,
     pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    imageUrl: "https://placehold.co/800x500/png?text=Nha+Trang+1",
+    imageUrl: "/placeholder-tour.svg",
   },
   {
     id: "nha-trang-2",
@@ -56,7 +56,7 @@ const tours: Tour[] = [
     adultPrice: 2950000,
     childPrice: 1500000,
     pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    imageUrl: "https://placehold.co/800x500/png?text=Nha+Trang+2",
+    imageUrl: "/placeholder-tour.svg",
   },
   {
     id: "nha-trang-3",
@@ -69,7 +69,7 @@ const tours: Tour[] = [
     adultPrice: 3050000,
     childPrice: 1550000,
     pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    imageUrl: "https://placehold.co/800x500/png?text=Nha+Trang+3",
+    imageUrl: "/placeholder-tour.svg",
   },
   {
     id: "nha-trang-4",
@@ -82,7 +82,7 @@ const tours: Tour[] = [
     adultPrice: 3150000,
     childPrice: 1600000,
     pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    imageUrl: "https://placehold.co/800x500/png?text=Nha+Trang+4",
+    imageUrl: "/placeholder-tour.svg",
   },
 ];
 

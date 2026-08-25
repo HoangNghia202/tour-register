@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Employee, Registration, Tour } from '../types/domain'
 import WizardLayout from '../components/wizard/WizardLayout'
 import WelcomeScreen from '../components/wizard/WelcomeScreen'
+import TourSelectionScreen from '../components/wizard/TourSelectionScreen'
 
 export type WizardStep = 'welcome' | 'tours' | 'register' | 'ticket'
 
@@ -70,6 +71,14 @@ function WizardPage() {
             } else {
               setCurrentStep('tours')
             }
+          }}
+        />
+      ) : currentStep === 'tours' && employee ? (
+        <TourSelectionScreen
+          employee={employee}
+          onTourSelected={(tour) => {
+            setSelectedTour(tour)
+            setCurrentStep('register')
           }}
         />
       ) : (
