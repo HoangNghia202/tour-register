@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Employee, Registration, Tour } from '../types/domain'
 import WizardLayout from '../components/wizard/WizardLayout'
+import WelcomeScreen from '../components/wizard/WelcomeScreen'
 
 export type WizardStep = 'welcome' | 'tours' | 'register' | 'ticket'
 
@@ -59,9 +60,23 @@ function WizardPage() {
 
   return (
     <WizardLayout>
-      <p className="text-center text-lg font-medium capitalize text-foreground">
-        {stepLabels[currentStep]} step
-      </p>
+      {currentStep === 'welcome' ? (
+        <WelcomeScreen
+          onVerified={(nextEmployee, existingRegistration) => {
+            setEmployee(nextEmployee)
+            if (existingRegistration) {
+              setRegistration(existingRegistration)
+              setCurrentStep('ticket')
+            } else {
+              setCurrentStep('tours')
+            }
+          }}
+        />
+      ) : (
+        <p className="text-center text-lg font-medium capitalize text-foreground">
+          {stepLabels[currentStep]} step
+        </p>
+      )}
     </WizardLayout>
   )
 }
