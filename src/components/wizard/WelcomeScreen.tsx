@@ -38,15 +38,6 @@ function WelcomeScreen({ onVerified }: WelcomeScreenProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-          Chào mừng bạn đến với chương trình Du Lịch 2026
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Vui lòng nhập Mã số nhân viên (MSNV) để bắt đầu đăng ký.
-        </p>
-      </div>
-
       <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <div className="flex flex-col gap-2">
           <Label htmlFor="msnv">Mã số nhân viên (MSNV)</Label>
