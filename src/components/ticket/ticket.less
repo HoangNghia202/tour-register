@@ -1,0 +1,121 @@
+@ticket-primary: #1e3a8a;
+@ticket-accent: #b91c1c;
+@ticket-border: #1e3a8a;
+
+.event-ticket {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  border: 2px solid @ticket-border;
+  border-radius: 16px;
+  padding: clamp(16px, 5vw, 28px);
+  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+  box-shadow: 0 10px 30px -12px rgba(30, 58, 138, 0.35);
+  color: #0f172a;
+  box-sizing: border-box;
+
+  &__logos {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 6px 10px;
+    padding-bottom: 14px;
+    border-bottom: 1px dashed rgba(30, 58, 138, 0.3);
+    font-size: clamp(0.6rem, 2.6vw, 0.75rem);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: @ticket-primary;
+    text-align: center;
+  }
+
+  &__title {
+    margin-top: 16px;
+    text-align: center;
+
+    .event-ticket__title-main {
+      margin: 0;
+      font-size: clamp(1.5rem, 7vw, 2rem);
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: @ticket-primary;
+      line-height: 1.1;
+    }
+
+    .event-ticket__title-sub {
+      margin: 4px 0 0;
+      font-size: clamp(0.95rem, 4vw, 1.15rem);
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: @ticket-accent;
+    }
+  }
+
+  &__name {
+    margin: 18px 0;
+    text-align: center;
+    font-size: clamp(1.15rem, 5.2vw, 1.5rem);
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  &__info-table {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 12px;
+    row-gap: 10px;
+    margin: 0;
+    padding: clamp(14px, 4vw, 18px);
+    border: 1px solid rgba(30, 58, 138, 0.25);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.7);
+    font-size: clamp(0.8rem, 3.4vw, 0.95rem);
+
+    .event-ticket__info-row {
+      display: contents;
+
+      dt {
+        margin: 0;
+        font-weight: 600;
+        color: @ticket-primary;
+        white-space: nowrap;
+      }
+
+      dd {
+        margin: 0;
+        text-align: right;
+        font-weight: 600;
+        color: #0f172a;
+        word-break: break-word;
+      }
+    }
+  }
+
+  &__tagline {
+    margin-top: 20px;
+    text-align: center;
+
+    .event-ticket__tagline-line {
+      margin: 2px 0;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: @ticket-accent;
+      font-size: clamp(0.85rem, 3.8vw, 1.05rem);
+      line-height: 1.25;
+    }
+  }
+
+  &__welcome {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px dashed rgba(30, 58, 138, 0.3);
+    text-align: center;
+
+    p {
+      margin: 2px 0;
+      font-size: clamp(0.78rem, 3.2vw, 0.9rem);
+      color: #334155;
+      line-height: 1.4;
+    }
+  }
+}

@@ -4,6 +4,7 @@ import WizardLayout from '../components/wizard/WizardLayout'
 import WelcomeScreen from '../components/wizard/WelcomeScreen'
 import TourSelectionScreen from '../components/wizard/TourSelectionScreen'
 import RegistrationFormScreen from '../components/wizard/RegistrationFormScreen'
+import TicketScreen from '../components/wizard/TicketScreen'
 
 export type WizardStep = 'welcome' | 'tours' | 'register' | 'ticket'
 
@@ -91,6 +92,8 @@ function WizardPage() {
             setCurrentStep('ticket')
           }}
         />
+      ) : currentStep === 'ticket' && employee && registration ? (
+        <TicketScreen employee={employee} registration={registration} />
       ) : (
         <p className="text-center text-lg font-medium capitalize text-foreground">
           {stepLabels[currentStep]} step
