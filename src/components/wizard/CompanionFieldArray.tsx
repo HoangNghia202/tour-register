@@ -35,14 +35,20 @@ function CompanionFieldArray({ control }: CompanionFieldArrayProps) {
 
   let childCount = 0
   let adultCount = 0
-  for (const companion of companions) {
-    if (!companion?.dob) continue
-    if (classifyAge(companion.dob) === 'child') childCount += 1
-    else adultCount += 1
-  }
+  const overCapIndices = new Set<number>()
+  companions.forEach((companion, index) => {
+    if (!companion?.dob) return
+    if (classifyAge(companion.dob) === 'child') {
+      childCount += 1
+      if (childCount > 2) overCapIndices.add(index)
+    } else {
+      adultCount += 1
+      if (adultCount > 2) overCapIndices.add(index)
+    }
+  })
 
   const capsReached =
-    (childCount >= 2 && adultCount >= 2) || fields.length >= 4
+    fields.length >= 4 || (childCount >= 2 && adultCount >= 2)
 
   return (
     <div className="flex flex-col gap-4">
@@ -56,6 +62,11 @@ function CompanionFieldArray({ control }: CompanionFieldArrayProps) {
       {fields.map((field, index) => {
         const dob = companions[index]?.dob
         const type = dob ? classifyAge(dob) : null
+        const isOverCap = overCapIndices.has(index)
+        const overCapMessage =
+          type === 'child'
+            ? 'Đã đủ số lượng trẻ em tối đa (2)'
+            : 'Đã đủ số lượng người lớn tối đa (2)'
 
         return (
           <div
@@ -107,10 +118,14 @@ function CompanionFieldArray({ control }: CompanionFieldArrayProps) {
                     <Input
                       id={`companions.${index}.dob`}
                       type="date"
+                      aria-invalid={isOverCap}
                       {...dobField}
                     />
                   )}
                 />
+                {isOverCap && (
+                  <p className="text-sm text-destructive">{overCapMessage}</p>
+                )}
               </div>
 
               <div className="flex flex-col gap-2">

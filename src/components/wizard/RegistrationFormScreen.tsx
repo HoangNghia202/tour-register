@@ -23,7 +23,35 @@ const companionSchema = z.object({
 
 export const registrationFormSchema = z
   .object({
-    companions: z.array(companionSchema).max(4),
+    companions: z
+      .array(companionSchema)
+      .max(4)
+      .superRefine((companions, ctx) => {
+        let childCount = 0
+        let adultCount = 0
+        companions.forEach((companion, index) => {
+          if (!companion?.dob) return
+          if (classifyAge(companion.dob) === 'child') {
+            childCount += 1
+            if (childCount > 2) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Đã đủ số lượng trẻ em tối đa (2)',
+                path: [index, 'dob'],
+              })
+            }
+          } else {
+            adultCount += 1
+            if (adultCount > 2) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Đã đủ số lượng người lớn tối đa (2)',
+                path: [index, 'dob'],
+              })
+            }
+          }
+        })
+      }),
     transportMethod: z.enum(['self', 'tour_bus']),
     pickupPoint: z
       .enum(['Hà Tĩnh', 'Quảng Bình', 'Quảng Trị', 'TP. Huế', 'Đà Nẵng', 'Quảng Nam', 'Quảng Ngãi'])
