@@ -3,6 +3,7 @@ import type { Employee, Registration, Tour } from '../types/domain'
 import WizardLayout from '../components/wizard/WizardLayout'
 import WelcomeScreen from '../components/wizard/WelcomeScreen'
 import TourSelectionScreen from '../components/wizard/TourSelectionScreen'
+import RegistrationFormScreen from '../components/wizard/RegistrationFormScreen'
 
 export type WizardStep = 'welcome' | 'tours' | 'register' | 'ticket'
 
@@ -79,6 +80,15 @@ function WizardPage() {
           onTourSelected={(tour) => {
             setSelectedTour(tour)
             setCurrentStep('register')
+          }}
+        />
+      ) : currentStep === 'register' && employee && selectedTour ? (
+        <RegistrationFormScreen
+          employee={employee}
+          tour={selectedTour}
+          onSubmitted={(nextRegistration) => {
+            setRegistration(nextRegistration)
+            setCurrentStep('ticket')
           }}
         />
       ) : (
