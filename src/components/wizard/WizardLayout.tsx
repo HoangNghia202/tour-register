@@ -13,7 +13,7 @@ function WizardLayout({ children }: WizardLayoutProps) {
             Tour Du Lịch Vùng Trung Bộ 2026
           </p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-            Tour registration
+            Đăng ký Tour Du Lịch
           </h1>
         </header>
 

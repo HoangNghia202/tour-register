@@ -12,8 +12,8 @@ function formatVnd(value: number): string {
 }
 
 const typeLabels: Record<Companion['type'], string> = {
-  adult: 'adult',
-  child: 'child',
+  adult: 'Người lớn',
+  child: 'Trẻ em',
 }
 
 function PricingSummary({ companions, tour }: PricingSummaryProps) {

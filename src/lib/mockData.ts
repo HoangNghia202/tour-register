@@ -22,7 +22,7 @@ const tours: Tour[] = [
   {
     id: "dalat-1",
     destination: "da_lat",
-    name: "Đà Lạt 1",
+    name: "Đà Lạt",
     startDate: "2026-09-28",
     endDate: "2026-09-30",
     maxCapacity: 750,
