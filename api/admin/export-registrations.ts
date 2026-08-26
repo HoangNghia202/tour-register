@@ -1,46 +1,227 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { requireAdminSession } from "../_lib/adminSession";
 import { supabaseAdmin } from "../../src/lib/supabase/server";
 
+type Row = Record<string, unknown>;
+
 interface CompanionRow {
+  id: string;
+  registrationId: string;
+  fullName: string;
+  relationship: string;
+  dob: string;
+  gender: "male" | "female";
   type: "adult" | "child";
 }
 
-function countByType(companions: CompanionRow[] | null | undefined, type: "adult" | "child"): number {
+function countByType(companions: Array<{ type: "adult" | "child" }> | null | undefined, type: "adult" | "child"): number {
   return (companions ?? []).filter((companion) => companion.type === type).length;
+}
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : String(value ?? "");
+}
+
+function pick(row: Row, camel: string, snake: string): unknown {
+  return row[camel] ?? row[snake];
+}
+
+function normalizeRegistration(row: Row) {
+  return {
+    id: asString(pick(row, "id", "id")),
+    employeeId: asString(pick(row, "employeeId", "employee_id")),
+    tourId: asString(pick(row, "tourId", "tour_id")),
+    totalPrice: Number(pick(row, "totalPrice", "total_price") ?? 0),
+    createdAt: asString(pick(row, "createdAt", "created_at")),
+  };
+}
+
+function normalizeEmployee(row: Row) {
+  return {
+    id: asString(pick(row, "id", "id")),
+    fullName: asString(pick(row, "fullName", "full_name")),
+  };
+}
+
+function normalizeTour(row: Row) {
+  return {
+    id: asString(pick(row, "id", "id")),
+    name: asString(pick(row, "name", "name")),
+  };
+}
+
+function normalizeCompanion(row: Row): CompanionRow {
+  return {
+    id: asString(pick(row, "id", "id")),
+    registrationId: asString(pick(row, "registrationId", "registration_id")),
+    fullName: asString(pick(row, "fullName", "full_name")),
+    relationship: asString(pick(row, "relationship", "relationship")),
+    dob: asString(pick(row, "dob", "dob")),
+    gender: pick(row, "gender", "gender") === "female" ? "female" : "male",
+    type: pick(row, "type", "type") === "child" ? "child" : "adult",
+  };
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("vi-VN");
+}
+
+function formatCompanionType(type: "adult" | "child"): string {
+  return type === "adult" ? "Người lớn" : "Trẻ em";
+}
+
+function formatGender(gender: "male" | "female"): string {
+  return gender === "male" ? "Nam" : "Nữ";
+}
+
+function formatCompanionDetails(companions: CompanionRow[]): string {
+  if (companions.length === 0) return "Không có";
+  return companions
+    .map(
+      (item, index) =>
+        `${index + 1}. ${item.fullName || "-"} | ${item.relationship || "-"} | ${formatGender(item.gender)} | ${formatDate(item.dob)} | ${formatCompanionType(item.type)}`,
+    )
+    .join("\n");
+}
+
+function applySheetStyle(worksheet: ExcelJS.Worksheet): void {
+  const border: Partial<ExcelJS.Borders> = {
+    top: { style: "thin", color: { argb: "FFD9D9D9" } },
+    left: { style: "thin", color: { argb: "FFD9D9D9" } },
+    bottom: { style: "thin", color: { argb: "FFD9D9D9" } },
+    right: { style: "thin", color: { argb: "FFD9D9D9" } },
+  };
+
+  const header = worksheet.getRow(1);
+  header.font = { bold: true, color: { argb: "FFFFFFFF" } };
+  header.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF2563EB" },
+  };
+  header.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+
+  worksheet.eachRow((row) => {
+    row.eachCell((cell) => {
+      cell.border = border;
+      if (row.number > 1 && typeof cell.value === "string") {
+        cell.alignment = { vertical: "top", wrapText: true };
+      }
+    });
+  });
+
+  worksheet.getColumn(8).numFmt = "#,##0";
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method Not Allowed" });
   if (!requireAdminSession(req, res)) return;
 
-  const { data, error } = await supabaseAdmin
+  const base = await supabaseAdmin
     .from("registrations")
-    .select(
-      `"totalPrice", "createdAt",
-       employee:employeeId ( "id", "fullName" ),
-       tour:tourId ( "name" ),
-       companions ( "type" )`,
-    )
-    .order("createdAt", { ascending: false });
+    .select("*")
+    .order("created_at", { ascending: false });
 
-  if (error) return res.status(500).json({ error: error.message });
+  const fallback = base.error
+    ? await supabaseAdmin.from("registrations").select("*").order("createdAt", { ascending: false })
+    : null;
 
-  const rows = (data ?? []).map((row: any) => ({
-    MSNV: row.employee?.id ?? "",
-    "Họ tên": row.employee?.fullName ?? "",
-    Tour: row.tour?.name ?? "",
-    "Số người lớn đi kèm": countByType(row.companions, "adult"),
-    "Số trẻ em đi kèm": countByType(row.companions, "child"),
-    "Tổng tiền": row.totalPrice,
-    "Ngày đăng ký": new Date(row.createdAt).toLocaleDateString("vi-VN"),
-  }));
+  const registrationsError = fallback?.error ?? base.error;
+  if (registrationsError) return res.status(500).json({ error: registrationsError.message });
 
-  const worksheet = XLSX.utils.json_to_sheet(rows);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Đăng ký");
-  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
+  const registrations = (((fallback?.data ?? base.data) as Row[] | null) ?? []).map(normalizeRegistration);
+  if (registrations.length === 0) {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Đăng ký");
+    worksheet.columns = [
+      { header: "MSNV", key: "msnv", width: 12 },
+      { header: "Họ tên", key: "fullName", width: 24 },
+      { header: "Tour", key: "tour", width: 24 },
+      { header: "Người thân đi cùng", key: "companions", width: 52 },
+      { header: "Số người lớn", key: "adultCount", width: 14 },
+      { header: "Số trẻ em", key: "childCount", width: 12 },
+      { header: "Tổng tiền", key: "totalPrice", width: 16 },
+      { header: "Ngày đăng ký", key: "createdAt", width: 14 },
+    ];
+    applySheetStyle(worksheet);
+    const arrayBuffer = await workbook.xlsx.writeBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", 'attachment; filename="danh-sach-dang-ky.xlsx"');
+    return res.status(200).send(buffer);
+  }
+
+  const employeeIds = [...new Set(registrations.map((r) => r.employeeId))];
+  const tourIds = [...new Set(registrations.map((r) => r.tourId))];
+  const registrationIds = [...new Set(registrations.map((r) => r.id))];
+
+  const [employeesResult, toursResult, companionsBase] = await Promise.all([
+    supabaseAdmin.from("employees").select("*").in("id", employeeIds),
+    supabaseAdmin.from("tours").select("*").in("id", tourIds),
+    supabaseAdmin.from("companions").select("*").in("registration_id", registrationIds),
+  ]);
+
+  const companionsResult = companionsBase.error
+    ? await supabaseAdmin.from("companions").select("*").in("registrationId", registrationIds)
+    : companionsBase;
+
+  if (employeesResult.error) return res.status(500).json({ error: employeesResult.error.message });
+  if (toursResult.error) return res.status(500).json({ error: toursResult.error.message });
+  if (companionsResult.error) return res.status(500).json({ error: companionsResult.error.message });
+
+  const employees = ((employeesResult.data as Row[] | null) ?? []).map(normalizeEmployee);
+  const tours = ((toursResult.data as Row[] | null) ?? []).map(normalizeTour);
+  const companions = ((companionsResult.data as Row[] | null) ?? []).map(normalizeCompanion);
+
+  const employeeMap = new Map(employees.map((item) => [item.id, item]));
+  const tourMap = new Map(tours.map((item) => [item.id, item]));
+  const companionsByRegistration = new Map<string, CompanionRow[]>();
+
+  for (const item of companions) {
+    const bucket = companionsByRegistration.get(item.registrationId) ?? [];
+    bucket.push(item);
+    companionsByRegistration.set(item.registrationId, bucket);
+  }
+
+  const rows = registrations.map((registration) => {
+    const employee = employeeMap.get(registration.employeeId);
+    const tour = tourMap.get(registration.tourId);
+    const companionRows = companionsByRegistration.get(registration.id) ?? [];
+
+    return {
+      msnv: employee?.id ?? "",
+      fullName: employee?.fullName ?? "",
+      tour: tour?.name ?? "",
+      companions: formatCompanionDetails(companionRows),
+      adultCount: countByType(companionRows, "adult"),
+      childCount: countByType(companionRows, "child"),
+      totalPrice: registration.totalPrice,
+      createdAt: formatDate(registration.createdAt),
+    };
+  });
+
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Đăng ký");
+  worksheet.columns = [
+    { header: "MSNV", key: "msnv", width: 12 },
+    { header: "Họ tên", key: "fullName", width: 24 },
+    { header: "Tour", key: "tour", width: 24 },
+    { header: "Người thân đi cùng", key: "companions", width: 52 },
+    { header: "Số người lớn", key: "adultCount", width: 14 },
+    { header: "Số trẻ em", key: "childCount", width: 12 },
+    { header: "Tổng tiền", key: "totalPrice", width: 16 },
+    { header: "Ngày đăng ký", key: "createdAt", width: 14 },
+  ];
+  worksheet.addRows(rows);
+  applySheetStyle(worksheet);
+  const arrayBuffer = await workbook.xlsx.writeBuffer();
+  const buffer = Buffer.from(arrayBuffer);
 
   res.setHeader(
     "Content-Type",
