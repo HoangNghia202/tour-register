@@ -31,6 +31,10 @@ function countByType(companions: Array<{ type: 'adult' | 'child' }>, type: 'adul
   return companions.filter((companion) => companion.type === type).length
 }
 
+function countTotalTickets(companions: Array<{ type: 'adult' | 'child' }>): number {
+  return 1 + countByType(companions, 'adult')
+}
+
 function formatCompanionType(type: 'adult' | 'child'): string {
   return type === 'adult' ? 'Người lớn' : 'Trẻ em'
 }
@@ -151,6 +155,7 @@ function RegistrationsTable({ onSessionExpired }: RegistrationsTableProps) {
               <TableHead className="min-w-[280px]">Người thân đi cùng</TableHead>
               <TableHead className="min-w-[140px]">Số người lớn đi kèm</TableHead>
               <TableHead className="min-w-[130px]">Số trẻ em đi kèm</TableHead>
+              <TableHead className="min-w-[120px]">Tổng số vé</TableHead>
               <TableHead className="min-w-[130px]">Tổng tiền</TableHead>
               <TableHead className="min-w-[120px]">Ngày đăng ký</TableHead>
             </TableRow>
@@ -158,7 +163,7 @@ function RegistrationsTable({ onSessionExpired }: RegistrationsTableProps) {
           <TableBody>
             {registrations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground">
+                <TableCell colSpan={10} className="text-center text-muted-foreground">
                   Chưa có lượt đăng ký nào.
                 </TableCell>
               </TableRow>
@@ -188,6 +193,7 @@ function RegistrationsTable({ onSessionExpired }: RegistrationsTableProps) {
                   </TableCell>
                   <TableCell>{countByType(registration.companions, 'adult')}</TableCell>
                   <TableCell>{countByType(registration.companions, 'child')}</TableCell>
+                  <TableCell className="font-medium">{countTotalTickets(registration.companions)}</TableCell>
                   <TableCell>{currencyFormatter.format(registration.totalPrice)}</TableCell>
                   <TableCell>{formatDate(registration.createdAt)}</TableCell>
                 </TableRow>

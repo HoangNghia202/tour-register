@@ -19,6 +19,10 @@ function countByType(companions: Array<{ type: "adult" | "child" }> | null | und
   return (companions ?? []).filter((companion) => companion.type === type).length;
 }
 
+function countTotalTickets(companions: Array<{ type: "adult" | "child" }> | null | undefined): number {
+  return 1 + countByType(companions, "adult");
+}
+
 function asString(value: unknown): string {
   return typeof value === "string" ? value : String(value ?? "");
 }
@@ -113,7 +117,7 @@ function applySheetStyle(worksheet: ExcelJS.Worksheet): void {
     });
   });
 
-  worksheet.getColumn(8).numFmt = "#,##0";
+  worksheet.getColumn(9).numFmt = "#,##0";
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -143,6 +147,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { header: "Người thân đi cùng", key: "companions", width: 52 },
       { header: "Số người lớn", key: "adultCount", width: 14 },
       { header: "Số trẻ em", key: "childCount", width: 12 },
+      { header: "Tổng số vé", key: "totalTickets", width: 12 },
       { header: "Tổng tiền", key: "totalPrice", width: 16 },
       { header: "Ngày đăng ký", key: "createdAt", width: 14 },
     ];
@@ -201,6 +206,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       companions: formatCompanionDetails(companionRows),
       adultCount: countByType(companionRows, "adult"),
       childCount: countByType(companionRows, "child"),
+      totalTickets: countTotalTickets(companionRows),
       totalPrice: registration.totalPrice,
       createdAt: formatDate(registration.createdAt),
     };
@@ -215,6 +221,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     { header: "Người thân đi cùng", key: "companions", width: 52 },
     { header: "Số người lớn", key: "adultCount", width: 14 },
     { header: "Số trẻ em", key: "childCount", width: 12 },
+    { header: "Tổng số vé", key: "totalTickets", width: 12 },
     { header: "Tổng tiền", key: "totalPrice", width: 16 },
     { header: "Ngày đăng ký", key: "createdAt", width: 14 },
   ];
