@@ -6,24 +6,43 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface AdminLoginFormProps {
-  password: string
   onLoginSuccess: () => void
+  initialError?: string | null
 }
 
-function AdminLoginForm({ password, onLoginSuccess }: AdminLoginFormProps) {
+function AdminLoginForm({ onLoginSuccess, initialError = null }: AdminLoginFormProps) {
   const [value, setValue] = useState('')
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(initialError)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (isSubmitting) return
 
-    if (value === password) {
-      setError(false)
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ password: value }),
+      })
+
+      const body = await response.json().catch(() => null)
+
+      if (!response.ok || !body?.ok) {
+        setError(body?.error ?? 'Mật khẩu không đúng, vui lòng thử lại.')
+        return
+      }
+
       onLoginSuccess()
-      return
+    } catch {
+      setError('Có lỗi xảy ra, vui lòng thử lại.')
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setError(true)
   }
 
   return (
@@ -47,7 +66,7 @@ function AdminLoginForm({ password, onLoginSuccess }: AdminLoginFormProps) {
                 value={value}
                 onChange={(event) => {
                   setValue(event.target.value)
-                  if (error) setError(false)
+                  if (error) setError(null)
                 }}
               />
             </div>
@@ -55,12 +74,12 @@ function AdminLoginForm({ password, onLoginSuccess }: AdminLoginFormProps) {
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>Mật khẩu không đúng, vui lòng thử lại.</AlertDescription>
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
-            <Button type="submit" size="lg" className="w-full">
-              Đăng nhập
+            <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </Button>
           </form>
         </section>

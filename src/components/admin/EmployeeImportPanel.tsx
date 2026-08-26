@@ -2,7 +2,7 @@ import { useRef, useState, type ChangeEvent } from 'react'
 import * as XLSX from 'xlsx'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import type { Destination, Employee } from '@/types/domain'
-import { importEmployees } from '@/lib/mockData'
+import { importEmployees, SessionExpiredError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -24,17 +24,24 @@ function toEmployeeRow(row: SheetRow): Omit<Employee, never> {
   }
 }
 
-function EmployeeImportPanel() {
+interface EmployeeImportPanelProps {
+  onSessionExpired: () => void
+}
+
+function EmployeeImportPanel({ onSessionExpired }: EmployeeImportPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState('')
   const [result, setResult] = useState<ImportResult | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
   const [pendingRows, setPendingRows] = useState<Array<Omit<Employee, never>> | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     setResult(null)
     setParseError(null)
+    setImportError(null)
     setPendingRows(null)
 
     if (!file) {
@@ -55,9 +62,24 @@ function EmployeeImportPanel() {
     }
   }
 
-  const handleImport = () => {
-    if (!pendingRows) return
-    setResult(importEmployees(pendingRows))
+  const handleImport = async () => {
+    if (!pendingRows || isImporting) return
+
+    setIsImporting(true)
+    setImportError(null)
+
+    try {
+      const res = await importEmployees(pendingRows)
+      setResult(res)
+    } catch (err) {
+      if (err instanceof SessionExpiredError) {
+        onSessionExpired()
+        return
+      }
+      setImportError('Không thể import nhân viên. Vui lòng thử lại.')
+    } finally {
+      setIsImporting(false)
+    }
   }
 
   return (
@@ -77,8 +99,8 @@ function EmployeeImportPanel() {
           onChange={handleFileChange}
           className="sm:max-w-sm"
         />
-        <Button type="button" onClick={handleImport} disabled={!pendingRows}>
-          Import
+        <Button type="button" onClick={handleImport} disabled={!pendingRows || isImporting}>
+          {isImporting ? 'Đang import...' : 'Import'}
         </Button>
       </div>
 
@@ -90,6 +112,13 @@ function EmployeeImportPanel() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{parseError}</AlertDescription>
+        </Alert>
+      )}
+
+      {importError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{importError}</AlertDescription>
         </Alert>
       )}
 

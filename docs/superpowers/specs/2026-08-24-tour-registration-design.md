@@ -51,18 +51,18 @@ Postgres tables in Supabase:
 Managed only via admin Excel import (see §5).
 
 ### `tours`
-| column | type | notes |
-|---|---|---|
-| `id` | PK | |
-| `destination` | text | `da_lat` \| `nha_trang` |
-| `name` | text | e.g. "Nha Trang 2" |
-| `start_date` / `end_date` | date | |
-| `max_capacity` | int | 750 for Đà Lạt, 450 each for Nha Trang 1–4 |
+| column | type | notes                                                  |
+|---|---|--------------------------------------------------------|
+| `id` | PK |                                                        |
+| `destination` | text | `da_lat` \| `nha_trang`                                |
+| `name` | text | e.g. "Nha Trang 2"                                     |
+| `start_date` / `end_date` | date |                                                        |
+| `max_capacity` | int | 700 for Đà Lạt, 550 each for Nha Trang 1–4             |
 | `registered_count` | int | atomically incremented on each successful registration |
-| `adult_price` | numeric | per-tour adult companion price |
-| `child_price` | numeric | per-tour child companion price |
-| `pdf_url` | text | itinerary PDF link, opens in a new tab |
-| `image_url` | text | placeholder for now |
+| `adult_price` | numeric | per-tour adult companion price                         |
+| `child_price` | numeric | per-tour child companion price                         |
+| `pdf_url` | text | itinerary PDF link, opens in a new tab                 |
+| `image_url` | text | placeholder for now                                    |
 
 Seeded once: 1 Đà Lạt row + 4 Nha Trang rows. Admin can edit `max_capacity`,
 `adult_price`, `child_price` per row.

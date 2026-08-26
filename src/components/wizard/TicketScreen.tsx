@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
 import { Download } from 'lucide-react'
-import type { Employee, Registration } from '../../types/domain'
-import { getTourById } from '../../lib/mockData'
+import type { Employee, Registration, Tour } from '../../types/domain'
+import { getTourById } from '../../lib/api'
 import { Button } from '../ui/button'
 import EventTicket from '../ticket/EventTicket'
 
@@ -14,8 +14,27 @@ interface TicketScreenProps {
 function TicketScreen({ employee, registration }: TicketScreenProps) {
   const ticketRef = useRef<HTMLDivElement>(null)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [tour, setTour] = useState<Tour | null | undefined>(undefined)
 
-  const tour = getTourById(registration.tourId)
+  useEffect(() => {
+    let cancelled = false
+
+    getTourById(registration.tourId)
+      .then((result) => {
+        if (!cancelled) setTour(result ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setTour(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [registration.tourId])
+
+  if (tour === undefined) {
+    return <p className="text-center text-sm text-muted-foreground">Đang tải...</p>
+  }
 
   if (!tour) {
     return (

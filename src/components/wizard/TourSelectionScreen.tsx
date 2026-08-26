@@ -1,6 +1,9 @@
-import { Calendar, FileText, MapPin, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { AlertCircle, Calendar, FileText, MapPin, Users } from 'lucide-react'
 import type { Employee, Tour } from '../../types/domain'
-import { getToursByDestination } from '../../lib/mockData'
+import { getToursByDestination } from '../../lib/api'
+import { createClient } from '../../lib/supabase/client'
+import { Alert, AlertDescription } from '../ui/alert'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import {
@@ -97,7 +100,68 @@ function TourCard({
 }
 
 function TourSelectionScreen({ employee, onTourSelected }: TourSelectionScreenProps) {
-  const tours = getToursByDestination(employee.destination)
+  const [tours, setTours] = useState<Tour[] | null>(null)
+  const [error, setError] = useState(false)
+
+  const load = async () => {
+    setError(false)
+    setTours(null)
+    try {
+      const data = await getToursByDestination(employee.destination)
+      setTours(data)
+    } catch {
+      setError(true)
+    }
+  }
+
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee.destination])
+
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`tours-${employee.destination}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tours',
+          filter: `destination=eq.${employee.destination}`,
+        },
+        (payload) => {
+          const updated = payload.new as Tour
+          setTours((prev) =>
+            prev ? prev.map((tour) => (tour.id === updated.id ? { ...tour, ...updated } : tour)) : prev,
+          )
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [employee.destination])
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Không thể tải danh sách tour. Vui lòng thử lại.</AlertDescription>
+        </Alert>
+        <Button type="button" onClick={load} className="self-start">
+          Thử lại
+        </Button>
+      </div>
+    )
+  }
+
+  if (!tours) {
+    return <p className="text-sm text-muted-foreground">Đang tải...</p>
+  }
 
   return (
     <div className="flex flex-col gap-6">

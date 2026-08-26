@@ -3,7 +3,11 @@ import EmployeeImportPanel from './EmployeeImportPanel'
 import TourConfigTable from './TourConfigTable'
 import RegistrationsTable from './RegistrationsTable'
 
-function AdminLayout() {
+interface AdminLayoutProps {
+  onSessionExpired: () => void
+}
+
+function AdminLayout({ onSessionExpired }: AdminLayoutProps) {
   return (
     <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-4 sm:px-6 lg:px-8">
@@ -26,13 +30,13 @@ function AdminLayout() {
               </TabsList>
 
               <TabsContent value="employees" className="mt-6">
-                <EmployeeImportPanel />
+                <EmployeeImportPanel onSessionExpired={onSessionExpired} />
               </TabsContent>
               <TabsContent value="tours" className="mt-6">
-                <TourConfigTable />
+                <TourConfigTable onSessionExpired={onSessionExpired} />
               </TabsContent>
               <TabsContent value="registrations" className="mt-6">
-                <RegistrationsTable />
+                <RegistrationsTable onSessionExpired={onSessionExpired} />
               </TabsContent>
             </Tabs>
           </section>

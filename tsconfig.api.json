@@ -4,28 +4,27 @@
     "paths": {
       "@/*": ["./src/*"]
     },
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.api.tsbuildinfo",
     "ignoreDeprecations": "6.0",
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "target": "es2023",
-    "lib": ["ES2023", "DOM"],
+    "lib": ["ES2023"],
     "module": "esnext",
-    "types": ["vite/client", "node"],
-    "allowArbitraryExtensions": true,
+    "types": ["node"],
     "skipLibCheck": true,
 
-    /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
-    "jsx": "react-jsx",
+    "esModuleInterop": true,
 
-    /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["api", "src/lib/supabase/server.ts", "src/types/domain.ts"]
 }
+
+

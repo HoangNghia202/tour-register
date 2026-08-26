@@ -1,6 +1,8 @@
-import * as XLSX from 'xlsx'
-import { Download } from 'lucide-react'
-import { getAllRegistrationsWithDetails } from '@/lib/mockData'
+import { useEffect, useState } from 'react'
+import { AlertCircle, Download } from 'lucide-react'
+import { getAllRegistrationsWithDetails, SessionExpiredError } from '@/lib/api'
+import type { Employee, Registration, Tour } from '@/types/domain'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -10,6 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+
+type RegistrationWithDetails = Registration & { employee: Employee; tour: Tour }
 
 const currencyFormatter = new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -27,24 +31,78 @@ function countByType(companions: Array<{ type: 'adult' | 'child' }>, type: 'adul
   return companions.filter((companion) => companion.type === type).length
 }
 
-function RegistrationsTable() {
-  const registrations = getAllRegistrationsWithDetails()
+interface RegistrationsTableProps {
+  onSessionExpired: () => void
+}
 
-  const handleExport = () => {
-    const rows = registrations.map((registration) => ({
-      MSNV: registration.employee.id,
-      'Họ tên': registration.employee.fullName,
-      Tour: registration.tour.name,
-      'Số người lớn đi kèm': countByType(registration.companions, 'adult'),
-      'Số trẻ em đi kèm': countByType(registration.companions, 'child'),
-      'Tổng tiền': registration.totalPrice,
-      'Ngày đăng ký': formatDate(registration.createdAt),
-    }))
+function RegistrationsTable({ onSessionExpired }: RegistrationsTableProps) {
+  const [registrations, setRegistrations] = useState<RegistrationWithDetails[] | null>(null)
+  const [loadError, setLoadError] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
-    const worksheet = XLSX.utils.json_to_sheet(rows)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Đăng ký')
-    XLSX.writeFile(workbook, 'danh-sach-dang-ky.xlsx')
+  const load = async () => {
+    setLoadError(false)
+    try {
+      const data = await getAllRegistrationsWithDetails()
+      setRegistrations(data)
+    } catch (err) {
+      if (err instanceof SessionExpiredError) {
+        onSessionExpired()
+        return
+      }
+      setLoadError(true)
+    }
+  }
+
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleExport = async () => {
+    setIsExporting(true)
+    setExportError(null)
+
+    try {
+      const response = await fetch('/api/admin/export-registrations', { credentials: 'include' })
+
+      if (response.status === 401) {
+        onSessionExpired()
+        return
+      }
+      if (!response.ok) throw new Error('export failed')
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'danh-sach-dang-ky.xlsx'
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setExportError('Không thể xuất file Excel. Vui lòng thử lại.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Không thể tải danh sách đăng ký. Vui lòng thử lại.</AlertDescription>
+        </Alert>
+        <Button type="button" onClick={load} className="self-start">
+          Thử lại
+        </Button>
+      </div>
+    )
+  }
+
+  if (!registrations) {
+    return <p className="text-sm text-muted-foreground">Đang tải...</p>
   }
 
   return (
@@ -56,11 +114,18 @@ function RegistrationsTable() {
             Tổng cộng {registrations.length} lượt đăng ký.
           </p>
         </div>
-        <Button type="button" onClick={handleExport} disabled={registrations.length === 0}>
+        <Button type="button" onClick={handleExport} disabled={registrations.length === 0 || isExporting}>
           <Download className="h-4 w-4" />
-          Xuất Excel
+          {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
         </Button>
       </div>
+
+      {exportError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{exportError}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="overflow-x-auto rounded-lg border border-border">
         <Table>

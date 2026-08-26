@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/((?!api/|@vite/|@react-refresh|src/|node_modules/|.*\\..*).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

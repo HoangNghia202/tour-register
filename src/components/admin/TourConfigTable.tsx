@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { AlertCircle } from 'lucide-react'
 import type { Tour } from '@/types/domain'
-import { getAllTours, updateTourConfig } from '@/lib/mockData'
+import { getAllTours, updateTourConfig, SessionExpiredError } from '@/lib/api'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -26,26 +28,78 @@ function toRowState(tour: Tour): RowState {
   }
 }
 
-function TourConfigTable() {
-  const tours = getAllTours()
-  const [rows, setRows] = useState<Record<string, RowState>>(() =>
-    Object.fromEntries(tours.map((tour) => [tour.id, toRowState(tour)])),
-  )
+interface TourConfigTableProps {
+  onSessionExpired: () => void
+}
+
+function TourConfigTable({ onSessionExpired }: TourConfigTableProps) {
+  const [tours, setTours] = useState<Tour[] | null>(null)
+  const [loadError, setLoadError] = useState(false)
+  const [rows, setRows] = useState<Record<string, RowState>>({})
   const [savedId, setSavedId] = useState<string | null>(null)
+  const [savingId, setSavingId] = useState<string | null>(null)
+  const [rowError, setRowError] = useState<string | null>(null)
+
+  const load = async () => {
+    setLoadError(false)
+    try {
+      const data = await getAllTours()
+      setTours(data)
+      setRows(Object.fromEntries(data.map((tour) => [tour.id, toRowState(tour)])))
+    } catch {
+      setLoadError(true)
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
 
   const updateField = (tourId: string, field: keyof RowState, value: string) => {
     setRows((prev) => ({ ...prev, [tourId]: { ...prev[tourId], [field]: value } }))
     if (savedId === tourId) setSavedId(null)
   }
 
-  const handleSave = (tour: Tour) => {
+  const handleSave = async (tour: Tour) => {
     const row = rows[tour.id]
-    updateTourConfig(tour.id, {
-      maxCapacity: Number(row.maxCapacity),
-      adultPrice: Number(row.adultPrice),
-      childPrice: Number(row.childPrice),
-    })
-    setSavedId(tour.id)
+    setSavingId(tour.id)
+    setRowError(null)
+
+    try {
+      await updateTourConfig(tour.id, {
+        maxCapacity: Number(row.maxCapacity),
+        adultPrice: Number(row.adultPrice),
+        childPrice: Number(row.childPrice),
+      })
+      setSavedId(tour.id)
+      await load()
+    } catch (err) {
+      if (err instanceof SessionExpiredError) {
+        onSessionExpired()
+        return
+      }
+      setRowError('Không thể lưu cấu hình tour. Vui lòng thử lại.')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Không thể tải danh sách tour. Vui lòng thử lại.</AlertDescription>
+        </Alert>
+        <Button type="button" onClick={load} className="self-start">
+          Thử lại
+        </Button>
+      </div>
+    )
+  }
+
+  if (!tours) {
+    return <p className="text-sm text-muted-foreground">Đang tải...</p>
   }
 
   return (
@@ -56,6 +110,13 @@ function TourConfigTable() {
           Chỉnh sức chứa và giá vé cho từng tour, sau đó nhấn Lưu.
         </p>
       </div>
+
+      {rowError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{rowError}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="overflow-x-auto rounded-lg border border-border">
         <Table>
@@ -100,8 +161,13 @@ function TourConfigTable() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Button type="button" size="sm" onClick={() => handleSave(tour)}>
-                        Lưu
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => handleSave(tour)}
+                        disabled={savingId === tour.id}
+                      >
+                        {savingId === tour.id ? 'Đang lưu...' : 'Lưu'}
                       </Button>
                       {savedId === tour.id && (
                         <span className="text-xs font-medium text-emerald-600">Đã lưu</span>
