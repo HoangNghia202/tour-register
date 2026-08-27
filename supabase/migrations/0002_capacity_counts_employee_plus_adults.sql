@@ -29,7 +29,9 @@ begin
   -- Capacity rule: employee (1) + number of adult companions.
   select 1 + coalesce(sum(case when c ->> 'type' = 'adult' then 1 else 0 end), 0)
   into v_slot_count
-  from jsonb_array_elements(p_companions) as c;
+  from jsonb_array_elements(coalesce(p_companions, '[]'::jsonb)) as c;
+
+  v_slot_count := coalesce(v_slot_count, 1);
 
   select * into v_tour from tours where "id" = p_tour_id for update;
 
@@ -41,7 +43,7 @@ begin
     raise exception 'TOUR_FULL';
   end if;
 
-  for v_companion in select * from jsonb_array_elements(p_companions)
+  for v_companion in select * from jsonb_array_elements(coalesce(p_companions, '[]'::jsonb))
   loop
     if v_companion ->> 'type' = 'adult' then
       v_total := v_total + v_tour."adultPrice";
@@ -62,7 +64,7 @@ begin
     c ->> 'gender',
     c ->> 'relationship',
     c ->> 'type'
-  from jsonb_array_elements(p_companions) as c;
+  from jsonb_array_elements(coalesce(p_companions, '[]'::jsonb)) as c;
 
   update tours
   set "registeredCount" = "registeredCount" + v_slot_count

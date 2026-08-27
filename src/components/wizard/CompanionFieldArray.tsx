@@ -213,7 +213,7 @@ function CompanionFieldArray({ control }: CompanionFieldArrayProps) {
           })
         }
       >
-        <Plus className="h-4 w-4" />+ Thêm người thân
+        <Plus className="h-4 w-4" />Thêm người thân
       </Button>
     </div>
   )

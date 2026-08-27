@@ -1,7 +1,5 @@
--- Alternative migration for deployments that use snake_case columns.
--- Capacity rule update:
---   each registration consumes 1 slot for the employee
---   + number of adult companions.
+-- Hotfix for existing deployments:
+-- submit_registration must work when companions is null/empty ([]).
 
 create or replace function public.submit_registration(
   p_employee_id text,
@@ -24,7 +22,6 @@ declare
   v_total_price numeric := 0;
   c jsonb;
 begin
-  -- Capacity = employee (1) + adult companions.
   select 1 + coalesce(sum(case when item ->> 'type' = 'adult' then 1 else 0 end), 0)
   into v_slot_count
   from jsonb_array_elements(coalesce(p_companions, '[]'::jsonb)) as item;
@@ -49,7 +46,6 @@ begin
     raise exception 'ALREADY_REGISTERED';
   end if;
 
-  -- Recompute total price server-side.
   for c in select * from jsonb_array_elements(coalesce(p_companions, '[]'::jsonb))
   loop
     if c ->> 'type' = 'adult' then

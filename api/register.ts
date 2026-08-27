@@ -62,8 +62,15 @@ function extractPgErrorCode(message: string): string {
   return match ?? message;
 }
 
-function mapDbErrorToUserMessage(source: string): string {
+function mapDbErrorToUserMessage(source: string, code?: string): string {
   const normalized = source.toLowerCase();
+  if (code === "23503") {
+    if (normalized.includes("employee")) return ERROR_MESSAGES.EMPLOYEE_NOT_FOUND;
+    if (normalized.includes("tour")) return ERROR_MESSAGES.TOUR_NOT_FOUND;
+  }
+  if (code === "23505") return ERROR_MESSAGES.ALREADY_REGISTERED;
+  if (code === "22P02") return ERROR_MESSAGES.INVALID_TOUR_ID;
+
   if (normalized.includes("employee") && normalized.includes("foreign key")) {
     return ERROR_MESSAGES.EMPLOYEE_NOT_FOUND;
   }
@@ -78,6 +85,9 @@ function mapDbErrorToUserMessage(source: string): string {
   }
   if (normalized.includes("invalid input syntax") && normalized.includes("integer")) {
     return ERROR_MESSAGES.INVALID_TOUR_ID;
+  }
+  if (normalized.includes("operator does not exist") && normalized.includes("integer = text")) {
+    return ERROR_MESSAGES.INVALID_FUNCTION_SIGNATURE;
   }
   return "Có lỗi xảy ra, vui lòng thử lại.";
 }
@@ -126,6 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method Not Allowed" });
 
   const { employeeId, tourId, transportMethod, pickupPoint, companions } = req.body ?? {};
+  const normalizedCompanions = Array.isArray(companions) ? (companions as CompanionInput[]) : [];
 
   if (typeof employeeId !== "string" || !employeeId.trim()) {
     return res.status(400).json({ ok: false, error: "MSNV không hợp lệ." });
@@ -140,10 +151,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ ok: false, error: "Điểm đón không hợp lệ." });
   }
   if (
-    !Array.isArray(companions) ||
-    companions.length === 0 ||
-    companions.length > 4 ||
-    !companions.every((item) => isValidCompanion(item as CompanionInput))
+    normalizedCompanions.length > 4 ||
+    !normalizedCompanions.every((item) => isValidCompanion(item))
   ) {
     return res.status(400).json({ ok: false, error: "Thông tin người đi kèm không hợp lệ." });
   }
@@ -165,7 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const adultPrice = getNumber(tourData as Record<string, unknown>, "adult_price", "adultPrice");
     const childPrice = getNumber(tourData as Record<string, unknown>, "child_price", "childPrice");
 
-    const totalPrice = (companions as CompanionInput[]).reduce((sum, companion) => {
+    const totalPrice = normalizedCompanions.reduce((sum, companion) => {
       return sum + (companion.type === "adult" ? adultPrice : childPrice);
     }, 0);
 
@@ -174,7 +183,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       p_tour_id: normalizedTourId,
       p_transport_method: transportMethod,
       p_pickup_point: transportMethod === "tour_bus" ? pickupPoint : null,
-      p_companions: toSnakeCaseCompanions(companions as CompanionInput[]),
+      p_companions: toSnakeCaseCompanions(normalizedCompanions),
       p_total_price: totalPrice,
     };
 
@@ -187,7 +196,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         p_tour_id: normalizedTourId,
         p_transport_method: transportMethod,
         p_pickup_point: transportMethod === "tour_bus" ? pickupPoint : null,
-        p_companions: toSnakeCaseCompanions(companions as CompanionInput[]),
+        p_companions: toSnakeCaseCompanions(normalizedCompanions),
       }));
     }
 
@@ -195,7 +204,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const errorLike = error as RpcErrorLike;
       const source = `${errorLike.message ?? ""} ${errorLike.details ?? ""} ${errorLike.hint ?? ""}`;
       const code = extractPgErrorCode(source);
-      const message = ERROR_MESSAGES[code] ?? mapDbErrorToUserMessage(source);
+      const message = ERROR_MESSAGES[code] ?? mapDbErrorToUserMessage(source, errorLike.code);
 
       console.error("[register] rpc error", {
         message: errorLike.message,
@@ -214,7 +223,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       tourId,
       transportMethod,
       pickupPoint: transportMethod === "tour_bus" ? pickupPoint : null,
-      companions: toRegistrationCompanions(companions as CompanionInput[]),
+      companions: toRegistrationCompanions(normalizedCompanions),
       totalPrice,
       createdAt: String(rpcRegistration.created_at ?? rpcRegistration.createdAt ?? new Date().toISOString()),
     };
