@@ -1,4 +1,4 @@
-import {  Users, MapPinned, ClipboardList } from 'lucide-react'
+import { MapPinned, ClipboardList } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import EmployeeImportPanel from './EmployeeImportPanel'
 import TourConfigTable from './TourConfigTable'
