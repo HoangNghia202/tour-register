@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { requireAdminSession } from "../_lib/adminSession";
-import { supabaseAdmin } from "../../src/lib/supabase/server";
+import { requireAdminSession } from "../_lib/adminSession.js";
+import { supabaseAdmin } from "../../src/lib/supabase/server.js";
 
 function normalizeTourId(rawTourId: string): string | number {
   const trimmed = rawTourId.trim();

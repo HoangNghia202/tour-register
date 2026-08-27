@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { supabaseAdmin } from "../src/lib/supabase/server";
+import { supabaseAdmin } from "../src/lib/supabase/server.js";
 
 const PICKUP_POINTS = [
   "Hà Tĩnh",
