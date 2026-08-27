@@ -51,7 +51,7 @@ function TicketScreen({ employee, registration }: TicketScreenProps) {
       const dataUrl = await toPng(ticketRef.current, {
         cacheBust: true,
         pixelRatio: 2,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#0b1f2e',
       })
       const link = document.createElement('a')
       link.download = `ve-moi-${employee.id}.png`

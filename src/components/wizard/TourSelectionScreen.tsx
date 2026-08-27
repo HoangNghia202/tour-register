@@ -41,17 +41,22 @@ function TourCard({
   const isFull = tour.registeredCount >= tour.maxCapacity
 
   return (
-    <Card className="flex flex-col overflow-hidden">
+    <Card className="group flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-teal-900/10">
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-muted">
         <img
           src={tour.imageUrl}
           alt={tour.name}
           loading="lazy"
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
         <Badge
           variant={isFull ? 'destructive' : 'default'}
-          className="absolute right-3 top-3 shadow"
+          className={
+            isFull
+              ? 'absolute right-3 top-3 shadow'
+              : 'absolute right-3 top-3 border-transparent bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow'
+          }
         >
           {`Còn lại ${remaining}/${tour.maxCapacity} chỗ`}
         </Badge>
@@ -166,8 +171,11 @@ function TourSelectionScreen({ employee, onTourSelected }: TourSelectionScreenPr
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold tracking-tight">Chọn tour du lịch</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+          <MapPin className="h-5 w-5 text-teal-600" />
+          Chọn tour du lịch
+        </h2>
+        <p className="text-sm text-black">
           {`Điểm đến của bạn: ${destinationLabels[employee.destination]}`}
         </p>
       </div>

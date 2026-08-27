@@ -32,7 +32,11 @@ const EventTicket = forwardRef<HTMLDivElement, EventTicketProps>(
     return (
       <div ref={ref} className="event-ticket">
         <div className="event-ticket__logos">
-          TGDD | DMX | TopZone | An Khang | EraBlue
+          <img
+            src="/logo.png"
+            alt="Logo HNO+"
+            className="event-ticket__logo event-ticket__logo--hno"
+          />
         </div>
 
         <div className="event-ticket__title">

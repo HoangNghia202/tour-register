@@ -71,7 +71,7 @@ function CompanionFieldArray({ control }: CompanionFieldArrayProps) {
         return (
           <div
             key={field.id}
-            className="flex flex-col gap-4 rounded-lg border p-4"
+            className="flex flex-col gap-4 rounded-lg border p-4 bg-white"
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">

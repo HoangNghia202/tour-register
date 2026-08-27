@@ -143,7 +143,7 @@ function WizardPage() {
 
   if (routeError) {
     return (
-      <WizardLayout>
+      <WizardLayout currentStep={currentStep}>
         <div className="flex flex-col items-start gap-4">
           <p className="text-sm text-destructive">{routeError}</p>
           <button
@@ -160,14 +160,14 @@ function WizardPage() {
 
   if (isLoadingRouteData) {
     return (
-      <WizardLayout>
+      <WizardLayout currentStep={currentStep}>
         <p className="text-sm text-muted-foreground">Đang tải...</p>
       </WizardLayout>
     )
   }
 
   return (
-    <WizardLayout>
+    <WizardLayout currentStep={currentStep}>
       {currentStep === 'welcome' ? (
         <WelcomeScreen
           onVerified={(nextEmployee, existingRegistration) => {

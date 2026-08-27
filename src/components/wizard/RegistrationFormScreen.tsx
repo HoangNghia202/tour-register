@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, ClipboardList } from 'lucide-react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -133,7 +133,10 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
   return (
     <form className="flex flex-col gap-8" onSubmit={handleSubmit(onValidSubmit)} noValidate>
       <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold tracking-tight">Thông tin đăng ký</h2>
+        <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+          <ClipboardList className="h-5 w-5 text-teal-900" />
+          Thông tin đăng ký
+        </h2>
         <p className="text-sm text-muted-foreground">{tour.name}</p>
       </div>
 
