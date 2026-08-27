@@ -20,7 +20,7 @@ const infoRows = (
   registration: Registration,
 ): Array<{ label: string; value: string }> => [
   { label: 'Mã số Nhân viên', value: employee.id },
-  { label: 'Bộ phận', value: employee.department },
+  { label: 'Mã siêu thị', value: employee.department },
   { label: 'Siêu thị', value: employee.store },
   { label: 'Tên Tour', value: tour.name },
   { label: 'Ngày khởi hành', value: formatDate(tour.startDate) },
@@ -40,8 +40,8 @@ const EventTicket = forwardRef<HTMLDivElement, EventTicketProps>(
         </div>
 
         <div className="event-ticket__title">
-          <p className="event-ticket__title-main">VÙNG HNO+</p>
-          <p className="event-ticket__title-sub">VÉ MỜI SỰ KIỆN 2026</p>
+          <p className="event-ticket__title-main">VÉ MỜI SỰ KIỆN 2026</p>
+          <p className="event-ticket__title-sub">Tour Du Lịch Vùng Trung Bộ 2026</p>
         </div>
 
         <p className="event-ticket__name">{employee.fullName}</p>
