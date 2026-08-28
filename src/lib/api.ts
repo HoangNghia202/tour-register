@@ -1,5 +1,12 @@
 import { createClient } from "@/lib/supabase/client";
-import type { Companion, Destination, Employee, Registration, Tour } from "@/types/domain";
+import type {
+  Companion,
+  Destination,
+  DestinationPricing,
+  Employee,
+  Registration,
+  Tour,
+} from "@/types/domain";
 
 export class SessionExpiredError extends Error {
   constructor() {
@@ -40,7 +47,7 @@ function mapEmployee(raw: RawRecord): Employee {
   return {
     id: String(getValue(raw, "id", "id") ?? ""),
     fullName: String(getValue(raw, "fullName", "full_name") ?? ""),
-    department: String(getValue(raw, "department", "department") ?? ""),
+    storeId: String(getValue(raw, "storeId", "store_id") ?? ""),
     store: String(getValue(raw, "store", "store") ?? ""),
     destination: mapDestination(getValue(raw, "destination", "destination")),
   };
@@ -55,8 +62,6 @@ function mapTour(raw: RawRecord): Tour {
     endDate: String(getValue(raw, "endDate", "end_date") ?? ""),
     maxCapacity: Number(getValue(raw, "maxCapacity", "max_capacity") ?? 0),
     registeredCount: Number(getValue(raw, "registeredCount", "registered_count") ?? 0),
-    adultPrice: Number(getValue(raw, "adultPrice", "adult_price") ?? 0),
-    childPrice: Number(getValue(raw, "childPrice", "child_price") ?? 0),
     pdfUrl: String(getValue(raw, "pdfUrl", "pdf_url") ?? ""),
     imageUrl: String(getValue(raw, "imageUrl", "image_url") ?? "/placeholder-tour.svg"),
   };
@@ -153,6 +158,36 @@ export async function getAllTours(): Promise<Tour[]> {
   return ((data as RawRecord[] | null) ?? []).map(mapTour);
 }
 
+export async function getDestinationPricing(
+  destination: Destination,
+): Promise<Record<string, number>> {
+  const { data, error } = await supabase
+    .from("destination_pricing")
+    .select("*")
+    .eq("destination", destination);
+  if (error) throw new Error(error.message);
+
+  const map: Record<string, number> = {};
+  for (const row of (data as RawRecord[] | null) ?? []) {
+    const key = String(getValue(row, "pickupPoint", "pickup_point") ?? "");
+    if (key) map[key] = Number(getValue(row, "price", "price") ?? 0);
+  }
+  return map;
+}
+
+export async function getAllDestinationPricing(): Promise<DestinationPricing[]> {
+  const { data, error } = await supabase.from("destination_pricing").select("*");
+  if (error) throw new Error(error.message);
+
+  return ((data as RawRecord[] | null) ?? []).map((row) => ({
+    destination: mapDestination(getValue(row, "destination", "destination")),
+    pickupPoint: String(
+      getValue(row, "pickupPoint", "pickup_point") ?? "",
+    ) as DestinationPricing["pickupPoint"],
+    price: Number(getValue(row, "price", "price") ?? 0),
+  }));
+}
+
 async function parseJsonResponse<T>(response: Response): Promise<T> {
   if (response.status === 401) throw new SessionExpiredError();
 
@@ -179,13 +214,27 @@ export async function getAllRegistrationsWithDetails(): Promise<
 
 export async function updateTourConfig(
   tourId: string,
-  changes: Partial<Pick<Tour, "maxCapacity" | "adultPrice" | "childPrice">>,
+  changes: Partial<Pick<Tour, "name" | "startDate" | "endDate" | "maxCapacity">>,
 ): Promise<void> {
   const response = await fetch("/api/admin/tour-config", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify({ tourId, changes }),
+  });
+  await parseJsonResponse(response);
+}
+
+export async function updateDestinationPrice(
+  destination: Destination,
+  pickupPoint: string,
+  price: number,
+): Promise<void> {
+  const response = await fetch("/api/admin/tour-config", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ destination, pickupPoint, price }),
   });
   await parseJsonResponse(response);
 }
