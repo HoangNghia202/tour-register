@@ -18,6 +18,10 @@ const ERROR_MESSAGES: Record<string, string> = {
   EMPLOYEE_NOT_FOUND: "Không tìm thấy nhân viên trong danh sách import.",
   INVALID_TOUR_ID: "Mã tour không hợp lệ.",
   INVALID_FUNCTION_SIGNATURE: "Cấu hình backend chưa đồng bộ (submit_registration).",
+  TOO_MANY_ADULTS: "Tối đa 4 người lớn đi kèm.",
+  TOO_MANY_CHILDREN: "Tối đa 2 trẻ em đi kèm.",
+  ROUTE_PRICE_NOT_FOUND:
+    "Chưa có cấu hình giá cho lộ trình này, vui lòng liên hệ quản trị.",
 };
 
 interface CompanionInput {
@@ -42,6 +46,7 @@ interface RpcRegistrationLike {
   registrationId?: unknown;
   created_at?: unknown;
   createdAt?: unknown;
+  total_price?: unknown;
 }
 
 function isValidCompanion(companion: CompanionInput): boolean {
@@ -123,15 +128,6 @@ function toRegistrationCompanions(companions: CompanionInput[]) {
   }));
 }
 
-function getNumber(raw: Record<string, unknown> | null, ...keys: string[]): number {
-  if (!raw) return 0;
-  for (const key of keys) {
-    const value = raw[key];
-    if (typeof value === "number") return value;
-  }
-  return 0;
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method Not Allowed" });
 
@@ -151,7 +147,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ ok: false, error: "Điểm đón không hợp lệ." });
   }
   if (
-    normalizedCompanions.length > 4 ||
+    normalizedCompanions.length > 6 ||
     !normalizedCompanions.every((item) => isValidCompanion(item))
   ) {
     return res.status(400).json({ ok: false, error: "Thông tin người đi kèm không hợp lệ." });
@@ -171,20 +167,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ ok: false, error: "Không tìm thấy tour." });
     }
 
-    const adultPrice = getNumber(tourData as Record<string, unknown>, "adult_price", "adultPrice");
-    const childPrice = getNumber(tourData as Record<string, unknown>, "child_price", "childPrice");
-
-    const totalPrice = normalizedCompanions.reduce((sum, companion) => {
-      return sum + (companion.type === "adult" ? adultPrice : childPrice);
-    }, 0);
-
     const rpcPayload = {
       p_employee_id: employeeId,
       p_tour_id: normalizedTourId,
       p_transport_method: transportMethod,
       p_pickup_point: transportMethod === "tour_bus" ? pickupPoint : null,
       p_companions: toSnakeCaseCompanions(normalizedCompanions),
-      p_total_price: totalPrice,
+      p_total_price: 0,
     };
 
     let { data, error } = await supabaseAdmin.rpc("submit_registration", rpcPayload);
@@ -217,6 +206,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const rpcRegistration = (data ?? {}) as RpcRegistrationLike;
+    const rpcTotalPrice = Number(
+      (data as Record<string, unknown> | null)?.total_price ?? 0,
+    );
     const registration = {
       id: String(rpcRegistration.id ?? rpcRegistration.registration_id ?? rpcRegistration.registrationId ?? ""),
       employeeId,
@@ -224,7 +216,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       transportMethod,
       pickupPoint: transportMethod === "tour_bus" ? pickupPoint : null,
       companions: toRegistrationCompanions(normalizedCompanions),
-      totalPrice,
+      totalPrice: rpcTotalPrice,
       createdAt: String(rpcRegistration.created_at ?? rpcRegistration.createdAt ?? new Date().toISOString()),
     };
 
