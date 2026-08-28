@@ -1,6 +1,7 @@
 import type { PickupPoint, TransportMethod } from '../../types/domain'
 import { calculateTotal } from '../../lib/pricing'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import {InfoIcon} from "lucide-react";
 
 interface PricingSummaryProps {
   routePrice: number | undefined
@@ -53,12 +54,23 @@ function PricingSummary({
             <span className="font-medium">Không tính phí</span>
           </div>
         )}
-        <div className="mt-2 flex items-center justify-between border-t pt-3">
-          <span className="font-semibold">TỔNG TIỀN DỰ KIẾN:</span>
-          <span className="text-lg font-bold text-primary">
+
+        <div className="mt-2  items-center justify-between border-t pt-3">
+          <div className="flex items-start text-xs text-blue-600 mb-4">
+            <InfoIcon size={14} className="mr-2" />
+            <span>Đây là Số Tiền Chi Phí TOUR tam tính, chưa bao gồm: Chi Phí cho Trẻ Em trên 5 tuổi (50% giá vé)  và Khấu trừ Tiền hỗ hỗ trừ Công Ty.</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+
+            <span className="font-semibold">TỔNG TIỀN DỰ KIẾN:</span>
+            <span className="text-lg font-bold text-primary">
             {total === undefined ? '—' : formatVnd(total)}
           </span>
+          </div>
         </div>
+
+
         {isLoading ? (
           <p className="text-xs text-muted-foreground">Đang tải bảng giá...</p>
         ) : routePrice === undefined ? (
