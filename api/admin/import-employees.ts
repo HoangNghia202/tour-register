@@ -5,7 +5,7 @@ import { supabaseAdmin } from "../../src/lib/supabase/server.js";
 interface EmployeeRowInput {
   id?: unknown;
   fullName?: unknown;
-  department?: unknown;
+  storeId?: unknown;
   store?: unknown;
   destination?: unknown;
 }
@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const validRows: Array<{
     id: string;
     fullName: string;
-    department: string;
+    store_id: string;
     store: string;
     destination: string;
   }> = [];
@@ -28,14 +28,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const rowNumber = index + 1;
     const id = String(row.id ?? "").trim();
     const fullName = String(row.fullName ?? "").trim();
-    const department = String(row.department ?? "").trim();
+    const storeId = String(row.storeId ?? "").trim();
     const store = String(row.store ?? "").trim();
     const destination = row.destination;
 
-    if (!id || !fullName || !department || !store) {
+    if (!id || !fullName || !storeId || !store) {
       errors.push({
         row: rowNumber,
-        message: "Thiếu thông tin bắt buộc (MSNV/Họ tên/Bộ phận/Siêu thị).",
+        message: "Thiếu thông tin bắt buộc (MSNV/Họ tên/Mã siêu thị/Siêu thị).",
       });
       return;
     }
@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    validRows.push({ id, fullName, department, store, destination });
+    validRows.push({ id, fullName, store_id: storeId, store, destination });
   });
 
   let imported = 0;
