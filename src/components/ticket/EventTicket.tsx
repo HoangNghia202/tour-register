@@ -20,7 +20,7 @@ const infoRows = (
   registration: Registration,
 ): Array<{ label: string; value: string }> => [
   { label: 'Mã số Nhân viên', value: employee.id },
-  { label: 'Mã siêu thị', value: employee.department },
+  { label: 'Mã siêu thị', value: employee.storeId },
   { label: 'Siêu thị', value: employee.store },
   { label: 'Tên Tour', value: tour.name },
   { label: 'Ngày khởi hành', value: formatDate(tour.startDate) },
