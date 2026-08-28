@@ -79,7 +79,7 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
   useEffect(() => {
     let cancelled = false
     setPricingError(false)
-    getDestinationPricing(employee.destination)
+    getDestinationPricing(tour.destination)
       .then((result) => {
         if (!cancelled) setPricing(result)
       })
@@ -89,7 +89,7 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
     return () => {
       cancelled = true
     }
-  }, [employee.destination])
+  }, [tour.destination])
 
   const {
     control,
@@ -126,6 +126,7 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
   const pickupPoint = useWatch({ control, name: 'pickupPoint' }) ?? null
   const routeKey = resolveRouteKey(transportMethod, pickupPoint)
   const routePrice = routeKey && pricing ? pricing[routeKey] : undefined
+  const pricingLoading = pricing === null && !pricingError
 
   const onValidSubmit = async (values: RegistrationFormValues) => {
     setSubmitError(null)
@@ -187,6 +188,7 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
         pickupPoint={pickupPoint}
         adultCount={adultCount}
         hasChild={hasChild}
+        isLoading={pricingLoading}
       />
 
       <div className="flex items-start gap-3">

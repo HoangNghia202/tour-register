@@ -139,7 +139,7 @@ Sau khi nhấn xác nhận, hệ thống xuất vé mời điện tử hiển th
 |                                                                 |
 |  +-----------------------------------------------------------+  |
 |  | Mã số Nhân viên:                             8830         |  |
-|  | Bộ phận:                  BP Quản Lý Siêu Thị - ĐMX        |  |
+|  | Mã siêu thị:              BP Quản Lý Siêu Thị - ĐMX        |  |
 |  | Siêu thị:         TGD_NAN_VIN - 180 Nguyễn Du              |  |
 |  | Tên Tour:                                  Đà Lạt         |  |
 |  | Ngày khởi hành:                        28/09/2026         |  |

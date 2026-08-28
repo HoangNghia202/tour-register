@@ -58,12 +58,12 @@ begin
     raise exception 'TOUR_NOT_FOUND';
   end if;
 
-  if exists (select 1 from public.registrations where employee_id = p_employee_id) then
-    raise exception 'ALREADY_REGISTERED';
-  end if;
-
   if v_registered_count + v_slot_count > v_max_capacity then
     raise exception 'TOUR_FULL';
+  end if;
+
+  if exists (select 1 from public.registrations where employee_id = p_employee_id) then
+    raise exception 'ALREADY_REGISTERED';
   end if;
 
   v_route_key := case when p_transport_method = 'self' then 'self' else p_pickup_point end;

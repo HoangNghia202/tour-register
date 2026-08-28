@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AlertCircle } from 'lucide-react'
-import type { Destination, DestinationPricing, Tour } from '@/types/domain'
+import type { Destination, DestinationPricing, RouteKey, Tour } from '@/types/domain'
 import {
   getAllDestinationPricing,
   getAllTours,
@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-const ROUTES: Array<{ key: string; label: string }> = [
+const ROUTES: Array<{ key: RouteKey; label: string }> = [
   { key: 'self', label: 'Tự túc' },
   { key: 'Hà Tĩnh', label: 'Hà Tĩnh' },
   { key: 'Quảng Bình', label: 'Quảng Bình' },
@@ -106,6 +106,7 @@ function TourConfigTable({ onSessionExpired }: TourConfigTableProps) {
 
   const updatePriceField = (key: string, value: string) => {
     setPrices((prev) => ({ ...prev, [key]: value }))
+    if (savedId === key) setSavedId(null)
   }
 
   const handleSaveMeta = async (tour: Tour) => {
@@ -128,12 +129,17 @@ function TourConfigTable({ onSessionExpired }: TourConfigTableProps) {
     }
   }
 
-  const handleSavePrice = async (destination: Destination, route: string) => {
+  const handleSavePrice = async (destination: Destination, route: RouteKey) => {
     const key = priceKey(destination, route)
+    const raw = prices[key]
+    if (raw === undefined || raw.trim() === '') {
+      setRowError('Vui lòng nhập giá hợp lệ.')
+      return
+    }
     setSavingId(key)
     setRowError(null)
     try {
-      await updateDestinationPrice(destination, route, Number(prices[key]))
+      await updateDestinationPrice(destination, route, Number(raw))
       setSavedId(key)
       await load()
     } catch (err) {

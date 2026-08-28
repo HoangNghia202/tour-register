@@ -59,13 +59,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(changes.startDate))) {
       return res.status(400).json({ ok: false, error: "Ngày bắt đầu không hợp lệ." });
     }
-    update.start_date = changes.startDate;
+    update.start_date = String(changes.startDate);
   }
   if (changes.endDate !== undefined) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(changes.endDate))) {
       return res.status(400).json({ ok: false, error: "Ngày kết thúc không hợp lệ." });
     }
-    update.end_date = changes.endDate;
+    update.end_date = String(changes.endDate);
   }
   if (changes.maxCapacity !== undefined) {
     const maxCapacity = Number(changes.maxCapacity);

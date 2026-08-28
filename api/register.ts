@@ -206,9 +206,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const rpcRegistration = (data ?? {}) as RpcRegistrationLike;
-    const rpcTotalPrice = Number(
+    const parsedTotalPrice = Number(
       (data as Record<string, unknown> | null)?.total_price ?? 0,
     );
+    const rpcTotalPrice = Number.isFinite(parsedTotalPrice) ? parsedTotalPrice : 0;
     const registration = {
       id: String(rpcRegistration.id ?? rpcRegistration.registration_id ?? rpcRegistration.registrationId ?? ""),
       employeeId,

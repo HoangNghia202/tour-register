@@ -8,6 +8,7 @@ interface PricingSummaryProps {
   pickupPoint: PickupPoint | null
   adultCount: number
   hasChild: boolean
+  isLoading: boolean
 }
 
 function formatVnd(value: number): string {
@@ -20,6 +21,7 @@ function PricingSummary({
   pickupPoint,
   adultCount,
   hasChild,
+  isLoading,
 }: PricingSummaryProps) {
   const routeLabel = transportMethod === 'self' ? 'Tự túc' : pickupPoint ?? 'Chưa chọn điểm đón'
   const ticketCount = 1 + adultCount
@@ -57,11 +59,15 @@ function PricingSummary({
             {total === undefined ? '—' : formatVnd(total)}
           </span>
         </div>
-        {routePrice === undefined && (
+        {isLoading ? (
+          <p className="text-xs text-muted-foreground">Đang tải bảng giá...</p>
+        ) : routePrice === undefined ? (
           <p className="text-xs text-muted-foreground">
-            Chọn điểm đón để xem giá.
+            {transportMethod === 'tour_bus' && !pickupPoint
+              ? 'Chọn điểm đón để xem giá.'
+              : 'Chưa có giá cho lộ trình này, vui lòng liên hệ quản trị.'}
           </p>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   )

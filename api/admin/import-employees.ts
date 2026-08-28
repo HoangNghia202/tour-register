@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const validRows: Array<{
     id: string;
     fullName: string;
-    store_id: string;
+    storeId: string;
     store: string;
     destination: string;
   }> = [];
@@ -48,13 +48,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    validRows.push({ id, fullName, store_id: storeId, store, destination });
+    validRows.push({ id, fullName, storeId, store, destination });
   });
 
   let imported = 0;
 
   if (validRows.length > 0) {
-    const { error } = await supabaseAdmin.from("employees").upsert(validRows, { onConflict: "id" });
+    const snakeRows = validRows.map((r) => ({
+      id: r.id,
+      full_name: r.fullName,
+      store_id: r.storeId,
+      store: r.store,
+      destination: r.destination,
+    }));
+
+    let { error } = await supabaseAdmin.from("employees").upsert(snakeRows, { onConflict: "id" });
+
+    if (error && /schema cache|column .* does not exist|'?full_name'?/i.test(error.message ?? "")) {
+      ({ error } = await supabaseAdmin.from("employees").upsert(
+        validRows.map((r) => ({
+          id: r.id,
+          fullName: r.fullName,
+          store_id: r.storeId,
+          store: r.store,
+          destination: r.destination,
+        })),
+        { onConflict: "id" },
+      ));
+    }
 
     if (error) {
       return res.status(500).json({ imported: 0, errors: [{ row: 0, message: error.message }] });

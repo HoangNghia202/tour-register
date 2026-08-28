@@ -5,6 +5,7 @@ import type {
   DestinationPricing,
   Employee,
   Registration,
+  RouteKey,
   Tour,
 } from "@/types/domain";
 
@@ -227,7 +228,7 @@ export async function updateTourConfig(
 
 export async function updateDestinationPrice(
   destination: Destination,
-  pickupPoint: string,
+  pickupPoint: RouteKey,
   price: number,
 ): Promise<void> {
   const response = await fetch("/api/admin/tour-config", {
