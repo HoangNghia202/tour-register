@@ -1,4 +1,4 @@
-import { MapPinned, ClipboardList } from 'lucide-react'
+import { MapPinned, ClipboardList, Users } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import EmployeeImportPanel from './EmployeeImportPanel'
 import TourConfigTable from './TourConfigTable'
@@ -44,10 +44,10 @@ function AdminLayout({ onSessionExpired }: AdminLayoutProps) {
           <section className=" w-full rounded-3xl border border-border bg-card px-5 py-6 shadow-lg shadow-teal-900/5 sm:px-8 sm:py-8">
             <Tabs defaultValue="tours">
               <TabsList className="grid h-auto w-full grid-cols-1 gap-1 bg-muted p-1 sm:grid-cols-3">
-                {/*<TabsTrigger value="employees" className="gap-2 py-2 data-[state=active]:text-teal-700">*/}
-                {/*  <Users className="h-4 w-4" />*/}
-                {/*  Nhân viên*/}
-                {/*</TabsTrigger>*/}
+                <TabsTrigger value="employees" className="gap-2 py-2 data-[state=active]:text-teal-700">
+                  <Users className="h-4 w-4" />
+                  Nhân viên
+                </TabsTrigger>
                 <TabsTrigger value="tours" className="gap-2 py-2 data-[state=active]:text-teal-700">
                   <MapPinned className="h-4 w-4" />
                   Cấu hình Tour

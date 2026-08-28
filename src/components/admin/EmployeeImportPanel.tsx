@@ -7,21 +7,88 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
-interface ImportResult {
-  imported: number
-  errors: Array<{ row: number; message: string }>
+type EmployeeRow = Omit<Employee, never>
+
+interface RowError {
+  row: number
+  message: string
 }
 
-type SheetRow = Record<string, unknown>
+interface ParseOutcome {
+  rows: EmployeeRow[]
+  skipped: number
+  errors: RowError[]
+}
 
-function toEmployeeRow(row: SheetRow): Omit<Employee, never> {
-  return {
-    id: String(row['MSNV'] ?? '').trim(),
-    fullName: String(row['Họ tên'] ?? '').trim(),
-    storeId: String(row['Mã siêu thị'] ?? '').trim(),
-    store: String(row['Siêu thị'] ?? '').trim(),
-    destination: String(row['Điểm đến'] ?? '').trim() as Destination,
+interface ImportResult {
+  imported: number
+  errors: RowError[]
+}
+
+// DS1 template: headers on row 4, data from row 5. Columns are read by position.
+const HEADER_ROWS = 4
+const COL = {
+  storeId: 3, // D — Mã Siêu Thị
+  store: 4, // E — Tên Siêu Thị
+  id: 5, // F — Mã Nhân Viên
+  fullName: 6, // G — Tên Nhân Viên
+  destination: 9, // J — ĐIỂM ĐẾN
+} as const
+
+function cell(row: unknown[], index: number): string {
+  const value = row[index]
+  return value == null ? '' : String(value).trim()
+}
+
+function mapDestination(raw: string): Destination | null {
+  const normalized = raw.toLowerCase().replace(/\s+/g, ' ')
+  if (normalized.includes('đà lạt')) return 'da_lat'
+  if (normalized.includes('nha trang')) return 'nha_trang'
+  return null
+}
+
+function parseSheet(rows: unknown[][]): ParseOutcome {
+  const outcome: ParseOutcome = { rows: [], skipped: 0, errors: [] }
+
+  for (let i = HEADER_ROWS; i < rows.length; i += 1) {
+    const raw = rows[i] ?? []
+    const excelRow = i + 1
+
+    const storeId = cell(raw, COL.storeId)
+    const store = cell(raw, COL.store)
+    const id = cell(raw, COL.id)
+    const fullName = cell(raw, COL.fullName)
+    const destinationRaw = cell(raw, COL.destination)
+
+    // Blank row — ignore entirely.
+    if (!storeId && !store && !id && !fullName && !destinationRaw) continue
+
+    // No destination = nhân viên không tham gia du lịch — skip, don't flag as error.
+    if (!destinationRaw) {
+      outcome.skipped += 1
+      continue
+    }
+
+    const destination = mapDestination(destinationRaw)
+    if (!destination) {
+      outcome.errors.push({ row: excelRow, message: `ĐIỂM ĐẾN không hợp lệ: "${destinationRaw}"` })
+      continue
+    }
+
+    const missing: string[] = []
+    if (!id) missing.push('Mã Nhân Viên')
+    if (!fullName) missing.push('Tên Nhân Viên')
+    if (!storeId) missing.push('Mã Siêu Thị')
+    if (!store) missing.push('Tên Siêu Thị')
+    if (missing.length > 0) {
+      outcome.errors.push({ row: excelRow, message: `Thiếu ${missing.join(', ')}` })
+      continue
+    }
+
+    outcome.rows.push({ id, fullName, storeId, store, destination })
   }
+
+  return outcome
 }
 
 interface EmployeeImportPanelProps {
@@ -31,10 +98,10 @@ interface EmployeeImportPanelProps {
 function EmployeeImportPanel({ onSessionExpired }: EmployeeImportPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState('')
+  const [parse, setParse] = useState<ParseOutcome | null>(null)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
-  const [pendingRows, setPendingRows] = useState<Array<Omit<Employee, never>> | null>(null)
   const [isImporting, setIsImporting] = useState(false)
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -42,7 +109,7 @@ function EmployeeImportPanel({ onSessionExpired }: EmployeeImportPanelProps) {
     setResult(null)
     setParseError(null)
     setImportError(null)
-    setPendingRows(null)
+    setParse(null)
 
     if (!file) {
       setFileName('')
@@ -55,22 +122,40 @@ function EmployeeImportPanel({ onSessionExpired }: EmployeeImportPanelProps) {
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json<SheetRow>(firstSheet)
-      setPendingRows(rows.map(toEmployeeRow))
+      if (!firstSheet) {
+        setParseError('File không có sheet dữ liệu nào.')
+        return
+      }
+
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(firstSheet, {
+        header: 1,
+        defval: '',
+        raw: false,
+      })
+      const outcome = parseSheet(rows)
+
+      if (outcome.rows.length === 0) {
+        setParseError(
+          'Không tìm thấy nhân viên hợp lệ trong file. Kiểm tra lại template (tên cột ở hàng 4, dữ liệu từ hàng 5).',
+        )
+        return
+      }
+
+      setParse(outcome)
     } catch {
       setParseError('Không thể đọc file. Vui lòng chọn file .xlsx hợp lệ.')
     }
   }
 
   const handleImport = async () => {
-    if (!pendingRows || isImporting) return
+    if (!parse || isImporting) return
 
     setIsImporting(true)
     setImportError(null)
 
     try {
-      const res = await importEmployees(pendingRows)
-      setResult(res)
+      const res = await importEmployees(parse.rows)
+      setResult({ imported: res.imported, errors: [...parse.errors, ...res.errors] })
     } catch (err) {
       if (err instanceof SessionExpiredError) {
         onSessionExpired()
@@ -87,7 +172,10 @@ function EmployeeImportPanel({ onSessionExpired }: EmployeeImportPanelProps) {
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold tracking-tight">Import nhân viên</h2>
         <p className="text-sm text-muted-foreground">
-          Chọn file Excel (.xlsx) với các cột: MSNV, Họ tên, Mã siêu thị, Siêu thị, Điểm đến.
+          Chọn file Excel (.xlsx) theo template DS1. Tên cột ở hàng 4, dữ liệu từ hàng 5. Các cột
+          được dùng: Mã Siêu Thị (D), Tên Siêu Thị (E), Mã Nhân Viên (F), Tên Nhân Viên (G), ĐIỂM
+          ĐẾN (J). Dòng không có điểm đến sẽ được bỏ qua. Nhân viên đã có sẽ được cập nhật, chưa có
+          thì thêm mới.
         </p>
       </div>
 
@@ -99,7 +187,7 @@ function EmployeeImportPanel({ onSessionExpired }: EmployeeImportPanelProps) {
           onChange={handleFileChange}
           className="sm:max-w-sm"
         />
-        <Button type="button" onClick={handleImport} disabled={!pendingRows || isImporting}>
+        <Button type="button" onClick={handleImport} disabled={!parse || isImporting}>
           {isImporting ? 'Đang import...' : 'Import'}
         </Button>
       </div>
@@ -122,6 +210,38 @@ function EmployeeImportPanel({ onSessionExpired }: EmployeeImportPanelProps) {
         </Alert>
       )}
 
+      {parse && !result && (
+        <div className="flex flex-col gap-3">
+          <Alert>
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>
+              Đọc được {parse.rows.length} nhân viên
+              {parse.skipped > 0 && ` · Bỏ qua ${parse.skipped} dòng không tham gia`}
+              {parse.errors.length > 0 && ` · ${parse.errors.length} dòng lỗi`}
+            </AlertDescription>
+          </Alert>
+
+          {parse.errors.length > 0 && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <p className="font-medium">Các dòng lỗi sẽ bị bỏ qua khi import:</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {parse.errors.slice(0, 50).map((error, index) => (
+                    <li key={`${error.row}-${index}`}>
+                      Dòng {error.row}: {error.message}
+                    </li>
+                  ))}
+                </ul>
+                {parse.errors.length > 50 && (
+                  <p className="mt-1">… và {parse.errors.length - 50} dòng lỗi khác.</p>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      )}
+
       {result && (
         <div className="flex flex-col gap-3">
           <Alert>
@@ -135,12 +255,15 @@ function EmployeeImportPanel({ onSessionExpired }: EmployeeImportPanelProps) {
               <AlertDescription>
                 <p className="font-medium">Có {result.errors.length} dòng lỗi:</p>
                 <ul className="mt-1 list-disc pl-5">
-                  {result.errors.map((error) => (
-                    <li key={error.row}>
+                  {result.errors.slice(0, 50).map((error, index) => (
+                    <li key={`${error.row}-${index}`}>
                       Dòng {error.row}: {error.message}
                     </li>
                   ))}
                 </ul>
+                {result.errors.length > 50 && (
+                  <p className="mt-1">… và {result.errors.length - 50} dòng lỗi khác.</p>
+                )}
               </AlertDescription>
             </Alert>
           )}
