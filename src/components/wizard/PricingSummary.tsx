@@ -1,23 +1,29 @@
-import type { Companion, Tour } from '../../types/domain'
-import { calculateTotal, classifyAge } from '../../lib/pricing'
+import type { PickupPoint, TransportMethod } from '../../types/domain'
+import { calculateTotal } from '../../lib/pricing'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
 interface PricingSummaryProps {
-  companions: Companion[]
-  tour: Tour
+  routePrice: number | undefined
+  transportMethod: TransportMethod
+  pickupPoint: PickupPoint | null
+  adultCount: number
+  hasChild: boolean
 }
 
 function formatVnd(value: number): string {
-  return value.toLocaleString('vi-VN')
+  return `${value.toLocaleString('vi-VN')} VNĐ`
 }
 
-const typeLabels: Record<Companion['type'], string> = {
-  adult: 'Người lớn',
-  child: 'Trẻ em',
-}
-
-function PricingSummary({ companions, tour }: PricingSummaryProps) {
-  const total = calculateTotal(companions, tour)
+function PricingSummary({
+  routePrice,
+  transportMethod,
+  pickupPoint,
+  adultCount,
+  hasChild,
+}: PricingSummaryProps) {
+  const routeLabel = transportMethod === 'self' ? 'Tự túc' : pickupPoint ?? 'Chưa chọn điểm đón'
+  const ticketCount = 1 + adultCount
+  const total = routePrice === undefined ? undefined : calculateTotal(routePrice, adultCount)
 
   return (
     <Card>
@@ -26,28 +32,36 @@ function PricingSummary({ companions, tour }: PricingSummaryProps) {
       </CardHeader>
       <CardContent className="flex flex-col gap-2 text-sm">
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Chi phí Nhân viên:</span>
-          <span className="font-medium">0 VNĐ</span>
+          <span className="text-muted-foreground">Lộ trình đón:</span>
+          <span className="font-medium">{routeLabel}</span>
         </div>
-
-        {companions.map((companion) => {
-          const type = classifyAge(companion.dob)
-          const price = type === 'adult' ? tour.adultPrice : tour.childPrice
-          const name = companion.fullName.trim() || 'Người thân'
-          return (
-            <div key={companion.id} className="flex items-center justify-between gap-2">
-              <span className="truncate text-muted-foreground">
-                {`${name} (${typeLabels[type]}):`}
-              </span>
-              <span className="shrink-0 font-medium">{`${formatVnd(price)} VNĐ`}</span>
-            </div>
-          )
-        })}
-
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Đơn giá / vé:</span>
+          <span className="font-medium">
+            {routePrice === undefined ? '—' : formatVnd(routePrice)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Số vé (nhân viên + người lớn):</span>
+          <span className="font-medium">{ticketCount}</span>
+        </div>
+        {hasChild && (
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Trẻ em:</span>
+            <span className="font-medium">Không tính phí</span>
+          </div>
+        )}
         <div className="mt-2 flex items-center justify-between border-t pt-3">
           <span className="font-semibold">TỔNG TIỀN DỰ KIẾN:</span>
-          <span className="text-lg font-bold text-primary">{`${formatVnd(total)} VNĐ`}</span>
+          <span className="text-lg font-bold text-primary">
+            {total === undefined ? '—' : formatVnd(total)}
+          </span>
         </div>
+        {routePrice === undefined && (
+          <p className="text-xs text-muted-foreground">
+            Chọn điểm đón để xem giá.
+          </p>
+        )}
       </CardContent>
     </Card>
   )

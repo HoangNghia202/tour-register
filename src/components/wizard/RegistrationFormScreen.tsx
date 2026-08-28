@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AlertCircle, ClipboardList } from 'lucide-react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { Companion, Employee, Registration, Tour } from '../../types/domain'
-import { classifyAge } from '../../lib/pricing'
-import { submitRegistration } from '../../lib/api'
+import { classifyAge, countAdults, resolveRouteKey } from '../../lib/pricing'
+import { getDestinationPricing, submitRegistration } from '../../lib/api'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
@@ -73,6 +73,23 @@ interface RegistrationFormScreenProps {
 
 function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFormScreenProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [pricing, setPricing] = useState<Record<string, number> | null>(null)
+  const [pricingError, setPricingError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setPricingError(false)
+    getDestinationPricing(employee.destination)
+      .then((result) => {
+        if (!cancelled) setPricing(result)
+      })
+      .catch(() => {
+        if (!cancelled) setPricingError(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [employee.destination])
 
   const {
     control,
@@ -101,6 +118,14 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
       relationship: companion.relationship,
       type: classifyAge(companion.dob),
     }))
+
+  const adultCount = countAdults(displayCompanions)
+  const hasChild = displayCompanions.some((companion) => companion.type === 'child')
+
+  const transportMethod = useWatch({ control, name: 'transportMethod' }) ?? 'self'
+  const pickupPoint = useWatch({ control, name: 'pickupPoint' }) ?? null
+  const routeKey = resolveRouteKey(transportMethod, pickupPoint)
+  const routePrice = routeKey && pricing ? pricing[routeKey] : undefined
 
   const onValidSubmit = async (values: RegistrationFormValues) => {
     setSubmitError(null)
@@ -147,7 +172,22 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
 
       <TransportSection control={control} />
 
-      <PricingSummary companions={displayCompanions} tour={tour} />
+      {pricingError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Không tải được bảng giá, vui lòng tải lại trang.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <PricingSummary
+        routePrice={routePrice}
+        transportMethod={transportMethod}
+        pickupPoint={pickupPoint}
+        adultCount={adultCount}
+        hasChild={hasChild}
+      />
 
       <div className="flex items-start gap-3">
         <Controller
