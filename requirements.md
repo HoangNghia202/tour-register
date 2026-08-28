@@ -22,7 +22,7 @@
                                                     ▼
                                ┌─────────────────────────────────────────┐
                                │ Màn 3: Form Đăng Ký Chi Tiết           │
-                               │ - Người thân đi cùng (Max 2 Trẻ + 2 NL) │
+                               │ - Người thân đi cùng (Max 2 Trẻ + 4 NL) │
                                │ - Hình thức & Điểm đón (7 tỉnh)         │
                                │ - Bảng giá tham khảo (Realtime)         │
                                │ - Checkbox xác nhận thông tin           │
@@ -86,7 +86,7 @@ Khi bấm **"Đăng ký"** ở Tour chọn lựa, form nhập thông tin xuất 
 - Có nút `[+ Thêm người thân]` để chọn thêm.
 - **Ràng buộc số lượng tối đa:**
     - Trẻ em dưới 10 tuổi: Tối đa **2 trẻ** (Trẻ 1 - Trẻ 2).
-    - Người lớn trên 10 tuổi: Tối đa **2 người** (Người thân 1 - Người thân 2).
+    - Người lớn trên 10 tuổi: Tối đa **4 người**.
 - **Thông tin chi tiết cần nhập cho từng người thân:**
     - Họ và tên
     - Ngày / Tháng / Năm sinh *(Hệ thống tự động validation độ tuổi thuộc nhóm Trẻ em hay Người lớn)*
@@ -108,10 +108,13 @@ Khi bấm **"Đăng ký"** ở Tour chọn lựa, form nhập thông tin xuất 
 
 #### 3. Bảng giá Tour tham khảo (Realtime Pricing Calculator)
 - Tự động tính toán tổng số tiền dự kiến dựa theo các thông tin đã điền:
-    - Chi phí cho Nhân viên: **0 VNĐ** (100% Công ty tài trợ).
-    - Chi phí Người lớn đi kèm: `Đơn giá người lớn × Số lượng người lớn`.
-    - Chi phí Trẻ em đi kèm: `Đơn giá trẻ em × Số lượng trẻ em`.
-    - **TỔNG TIỀN DỰ KIẾN:** Displays total calculation.
+    - Giá vé theo **lộ trình đón** của điểm đến (Tự túc hoặc 1 trong 7 điểm đón),
+      không phân biệt người lớn / trẻ em.
+    - Số vé phải trả tiền = **Nhân viên (1) + số người lớn đi kèm**. Trẻ em dưới 10
+      tuổi không tính phí.
+    - **TỔNG TIỀN DỰ KIẾN** = `Đơn giá lộ trình × Số vé phải trả tiền`.
+    - Bảng giá theo lộ trình được quản trị cấu hình ở trang `/admin` (lưu trong bảng
+      `destination_pricing`).
 
 #### 4. Xác nhận thông tin
 - Tickbox bắt buộc: `[ ] Tôi đã kiểm tra đầy đủ và xác nhận thông tin chính xác.`
@@ -136,7 +139,7 @@ Sau khi nhấn xác nhận, hệ thống xuất vé mời điện tử hiển th
 |                                                                 |
 |  +-----------------------------------------------------------+  |
 |  | Mã số Nhân viên:                             8830         |  |
-|  | Bộ phận:                  BP Quản Lý Siêu Thị - ĐMX        |  |
+|  | Mã siêu thị:              BP Quản Lý Siêu Thị - ĐMX        |  |
 |  | Siêu thị:         TGD_NAN_VIN - 180 Nguyễn Du              |  |
 |  | Tên Tour:                                  Đà Lạt         |  |
 |  | Ngày khởi hành:                        28/09/2026         |  |

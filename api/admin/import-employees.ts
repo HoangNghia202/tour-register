@@ -5,7 +5,7 @@ import { supabaseAdmin } from "../../src/lib/supabase/server.js";
 interface EmployeeRowInput {
   id?: unknown;
   fullName?: unknown;
-  department?: unknown;
+  storeId?: unknown;
   store?: unknown;
   destination?: unknown;
 }
@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const validRows: Array<{
     id: string;
     fullName: string;
-    department: string;
+    storeId: string;
     store: string;
     destination: string;
   }> = [];
@@ -28,14 +28,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const rowNumber = index + 1;
     const id = String(row.id ?? "").trim();
     const fullName = String(row.fullName ?? "").trim();
-    const department = String(row.department ?? "").trim();
+    const storeId = String(row.storeId ?? "").trim();
     const store = String(row.store ?? "").trim();
     const destination = row.destination;
 
-    if (!id || !fullName || !department || !store) {
+    if (!id || !fullName || !storeId || !store) {
       errors.push({
         row: rowNumber,
-        message: "Thiếu thông tin bắt buộc (MSNV/Họ tên/Bộ phận/Siêu thị).",
+        message: "Thiếu thông tin bắt buộc (MSNV/Họ tên/Mã siêu thị/Siêu thị).",
       });
       return;
     }
@@ -48,13 +48,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    validRows.push({ id, fullName, department, store, destination });
+    validRows.push({ id, fullName, storeId, store, destination });
   });
 
   let imported = 0;
 
   if (validRows.length > 0) {
-    const { error } = await supabaseAdmin.from("employees").upsert(validRows, { onConflict: "id" });
+    const snakeRows = validRows.map((r) => ({
+      id: r.id,
+      full_name: r.fullName,
+      store_id: r.storeId,
+      store: r.store,
+      destination: r.destination,
+    }));
+
+    let { error } = await supabaseAdmin.from("employees").upsert(snakeRows, { onConflict: "id" });
+
+    if (error && /schema cache|column .* does not exist|'?full_name'?/i.test(error.message ?? "")) {
+      ({ error } = await supabaseAdmin.from("employees").upsert(
+        validRows.map((r) => ({
+          id: r.id,
+          fullName: r.fullName,
+          store_id: r.storeId,
+          store: r.store,
+          destination: r.destination,
+        })),
+        { onConflict: "id" },
+      ));
+    }
 
     if (error) {
       return res.status(500).json({ imported: 0, errors: [{ row: 0, message: error.message }] });

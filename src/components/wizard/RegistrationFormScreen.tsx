@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AlertCircle, ClipboardList } from 'lucide-react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { Companion, Employee, Registration, Tour } from '../../types/domain'
-import { classifyAge } from '../../lib/pricing'
-import { submitRegistration } from '../../lib/api'
+import { classifyAge, countAdults, resolveRouteKey } from '../../lib/pricing'
+import { getDestinationPricing, submitRegistration } from '../../lib/api'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
@@ -25,7 +25,7 @@ export const registrationFormSchema = z
   .object({
     companions: z
       .array(companionSchema)
-      .max(4)
+      .max(6)
       .superRefine((companions, ctx) => {
         let childCount = 0
         let adultCount = 0
@@ -42,10 +42,10 @@ export const registrationFormSchema = z
             }
           } else {
             adultCount += 1
-            if (adultCount > 2) {
+            if (adultCount > 4) {
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: 'Đã đủ số lượng người lớn tối đa (2)',
+                message: 'Đã đủ số lượng người lớn tối đa (4)',
                 path: [index, 'dob'],
               })
             }
@@ -73,6 +73,23 @@ interface RegistrationFormScreenProps {
 
 function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFormScreenProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [pricing, setPricing] = useState<Record<string, number> | null>(null)
+  const [pricingError, setPricingError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setPricingError(false)
+    getDestinationPricing(tour.destination)
+      .then((result) => {
+        if (!cancelled) setPricing(result)
+      })
+      .catch(() => {
+        if (!cancelled) setPricingError(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [tour.destination])
 
   const {
     control,
@@ -101,6 +118,15 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
       relationship: companion.relationship,
       type: classifyAge(companion.dob),
     }))
+
+  const adultCount = countAdults(displayCompanions)
+  const hasChild = displayCompanions.some((companion) => companion.type === 'child')
+
+  const transportMethod = useWatch({ control, name: 'transportMethod' }) ?? 'self'
+  const pickupPoint = useWatch({ control, name: 'pickupPoint' }) ?? null
+  const routeKey = resolveRouteKey(transportMethod, pickupPoint)
+  const routePrice = routeKey && pricing ? pricing[routeKey] : undefined
+  const pricingLoading = pricing === null && !pricingError
 
   const onValidSubmit = async (values: RegistrationFormValues) => {
     setSubmitError(null)
@@ -138,13 +164,32 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
           Thông tin đăng ký
         </h2>
         <p className="text-sm text-muted-foreground">{tour.name}</p>
+        <p className="text-xs text-muted-foreground">
+          <span className="text-destructive">*</span> Trường bắt buộc
+        </p>
       </div>
 
       <CompanionFieldArray control={control} />
 
       <TransportSection control={control} />
 
-      <PricingSummary companions={displayCompanions} tour={tour} />
+      {pricingError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Không tải được bảng giá, vui lòng tải lại trang.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <PricingSummary
+        routePrice={routePrice}
+        transportMethod={transportMethod}
+        pickupPoint={pickupPoint}
+        adultCount={adultCount}
+        hasChild={hasChild}
+        isLoading={pricingLoading}
+      />
 
       <div className="flex items-start gap-3">
         <Controller
@@ -159,7 +204,7 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
             />
           )}
         />
-        <Label htmlFor="confirmed" className="text-sm font-normal leading-snug">
+        <Label htmlFor="confirmed" required className="text-sm font-normal leading-snug">
           Tôi đã kiểm tra đầy đủ và xác nhận thông tin chính xác.
         </Label>
       </div>

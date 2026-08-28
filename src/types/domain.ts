@@ -11,10 +11,12 @@ export type PickupPoint =
   | "Quảng Nam"
   | "Quảng Ngãi";
 
+export type RouteKey = "self" | PickupPoint;
+
 export interface Employee {
   id: string;
   fullName: string;
-  department: string;
+  storeId: string;
   store: string;
   destination: Destination;
 }
@@ -27,8 +29,6 @@ export interface Tour {
   endDate: string;
   maxCapacity: number;
   registeredCount: number;
-  adultPrice: number;
-  childPrice: number;
   pdfUrl: string;
   imageUrl: string;
 }
@@ -51,4 +51,10 @@ export interface Registration {
   companions: Companion[];
   totalPrice: number;
   createdAt: string;
+}
+
+export interface DestinationPricing {
+  destination: Destination;
+  pickupPoint: RouteKey;
+  price: number;
 }

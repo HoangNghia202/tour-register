@@ -61,7 +61,7 @@ function TransportSection({ control }: TransportSectionProps) {
 
       {transportMethod === 'tour_bus' && (
         <div className="flex flex-col gap-2">
-          <Label htmlFor="pickup-point">Điểm đón</Label>
+          <Label htmlFor="pickup-point" required>Điểm đón</Label>
           <Controller
             control={control}
             name="pickupPoint"

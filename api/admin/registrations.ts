@@ -50,7 +50,7 @@ function normalizeEmployee(row: Row) {
   return {
     id: asString(pick(row, "id", "id")),
     fullName: asString(pick(row, "fullName", "full_name")),
-    department: asString(pick(row, "department", "department")),
+    storeId: asString(pick(row, "storeId", "store_id")),
     store: asString(pick(row, "store", "store")),
     destination: asString(pick(row, "destination", "destination")),
   };
@@ -65,8 +65,6 @@ function normalizeTour(row: Row) {
     endDate: asString(pick(row, "endDate", "end_date")),
     maxCapacity: Number(pick(row, "maxCapacity", "max_capacity") ?? 0),
     registeredCount: Number(pick(row, "registeredCount", "registered_count") ?? 0),
-    adultPrice: Number(pick(row, "adultPrice", "adult_price") ?? 0),
-    childPrice: Number(pick(row, "childPrice", "child_price") ?? 0),
     pdfUrl: asString(pick(row, "pdfUrl", "pdf_url")),
     imageUrl: asString(pick(row, "imageUrl", "image_url")),
   };

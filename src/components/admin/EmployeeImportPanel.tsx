@@ -18,7 +18,7 @@ function toEmployeeRow(row: SheetRow): Omit<Employee, never> {
   return {
     id: String(row['MSNV'] ?? '').trim(),
     fullName: String(row['Họ tên'] ?? '').trim(),
-    department: String(row['Bộ phận'] ?? '').trim(),
+    storeId: String(row['Mã siêu thị'] ?? '').trim(),
     store: String(row['Siêu thị'] ?? '').trim(),
     destination: String(row['Điểm đến'] ?? '').trim() as Destination,
   }
@@ -87,7 +87,7 @@ function EmployeeImportPanel({ onSessionExpired }: EmployeeImportPanelProps) {
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold tracking-tight">Import nhân viên</h2>
         <p className="text-sm text-muted-foreground">
-          Chọn file Excel (.xlsx) với các cột: MSNV, Họ tên, Bộ phận, Siêu thị, Điểm đến.
+          Chọn file Excel (.xlsx) với các cột: MSNV, Họ tên, Mã siêu thị, Siêu thị, Điểm đến.
         </p>
       </div>
 
