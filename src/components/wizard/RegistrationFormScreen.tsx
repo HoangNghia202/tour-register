@@ -25,7 +25,7 @@ export const registrationFormSchema = z
   .object({
     companions: z
       .array(companionSchema)
-      .max(4)
+      .max(6)
       .superRefine((companions, ctx) => {
         let childCount = 0
         let adultCount = 0
@@ -42,10 +42,10 @@ export const registrationFormSchema = z
             }
           } else {
             adultCount += 1
-            if (adultCount > 2) {
+            if (adultCount > 4) {
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: 'Đã đủ số lượng người lớn tối đa (2)',
+                message: 'Đã đủ số lượng người lớn tối đa (4)',
                 path: [index, 'dob'],
               })
             }
@@ -138,6 +138,9 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
           Thông tin đăng ký
         </h2>
         <p className="text-sm text-muted-foreground">{tour.name}</p>
+        <p className="text-xs text-muted-foreground">
+          <span className="text-destructive">*</span> Trường bắt buộc
+        </p>
       </div>
 
       <CompanionFieldArray control={control} />
@@ -159,7 +162,7 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
             />
           )}
         />
-        <Label htmlFor="confirmed" className="text-sm font-normal leading-snug">
+        <Label htmlFor="confirmed" required className="text-sm font-normal leading-snug">
           Tôi đã kiểm tra đầy đủ và xác nhận thông tin chính xác.
         </Label>
       </div>

@@ -43,19 +43,19 @@ function CompanionFieldArray({ control }: CompanionFieldArrayProps) {
       if (childCount > 2) overCapIndices.add(index)
     } else {
       adultCount += 1
-      if (adultCount > 2) overCapIndices.add(index)
+      if (adultCount > 4) overCapIndices.add(index)
     }
   })
 
   const capsReached =
-    fields.length >= 4 || (childCount >= 2 && adultCount >= 2)
+    fields.length >= 6 || (childCount >= 2 && adultCount >= 4)
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h3 className="text-base font-semibold">Người thân đi cùng</h3>
         <p className="text-sm text-muted-foreground">
-          Tối đa 2 trẻ em (dưới 10 tuổi) và 2 người lớn (từ 10 tuổi).
+          Tối đa 4 người lớn (từ 10 tuổi) và 2 trẻ em (dưới 10 tuổi).
         </p>
       </div>
 
@@ -66,7 +66,7 @@ function CompanionFieldArray({ control }: CompanionFieldArrayProps) {
         const overCapMessage =
           type === 'child'
             ? 'Đã đủ số lượng trẻ em tối đa (2)'
-            : 'Đã đủ số lượng người lớn tối đa (2)'
+            : 'Đã đủ số lượng người lớn tối đa (4)'
 
         return (
           <div
@@ -95,7 +95,7 @@ function CompanionFieldArray({ control }: CompanionFieldArrayProps) {
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <Label htmlFor={`companions.${index}.fullName`}>Họ và tên</Label>
+                <Label htmlFor={`companions.${index}.fullName`} required>Họ và tên</Label>
                 <Controller
                   control={control}
                   name={`companions.${index}.fullName`}
@@ -110,7 +110,7 @@ function CompanionFieldArray({ control }: CompanionFieldArrayProps) {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label htmlFor={`companions.${index}.dob`}>Ngày sinh</Label>
+                <Label htmlFor={`companions.${index}.dob`} required>Ngày sinh</Label>
                 <Controller
                   control={control}
                   name={`companions.${index}.dob`}
@@ -129,7 +129,7 @@ function CompanionFieldArray({ control }: CompanionFieldArrayProps) {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label>Giới tính</Label>
+                <Label required>Giới tính</Label>
                 <Controller
                   control={control}
                   name={`companions.${index}.gender`}
@@ -169,7 +169,7 @@ function CompanionFieldArray({ control }: CompanionFieldArrayProps) {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label htmlFor={`companions.${index}.relationship`}>
+                <Label htmlFor={`companions.${index}.relationship`} required>
                   Mối quan hệ
                 </Label>
                 <Controller
