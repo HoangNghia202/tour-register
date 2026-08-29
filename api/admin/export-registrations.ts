@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import ExcelJS from "exceljs";
 import { requireAdminSession } from "../_lib/adminSession.js";
+import { fetchAllRows } from "../_lib/fetchAllRows.js";
 import { supabaseAdmin } from "../../src/lib/supabase/server.js";
 
 type Row = Record<string, unknown>;
@@ -124,19 +125,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method Not Allowed" });
   if (!requireAdminSession(req, res)) return;
 
-  const base = await supabaseAdmin
-    .from("registrations")
-    .select("*")
-    .order("created_at", { ascending: false });
+  let registrationsResult = await fetchAllRows(() =>
+    supabaseAdmin
+      .from("registrations")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false }),
+  );
 
-  const fallback = base.error
-    ? await supabaseAdmin.from("registrations").select("*").order("createdAt", { ascending: false })
-    : null;
+  if (registrationsResult.error) {
+    registrationsResult = await fetchAllRows(() =>
+      supabaseAdmin
+        .from("registrations")
+        .select("*")
+        .order("createdAt", { ascending: false })
+        .order("id", { ascending: false }),
+    );
+  }
 
-  const registrationsError = fallback?.error ?? base.error;
-  if (registrationsError) return res.status(500).json({ error: registrationsError.message });
+  if (registrationsResult.error) {
+    return res.status(500).json({ error: registrationsResult.error.message });
+  }
 
-  const registrations = (((fallback?.data ?? base.data) as Row[] | null) ?? []).map(normalizeRegistration);
+  const registrations = registrationsResult.data.map(normalizeRegistration);
   if (registrations.length === 0) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Đăng ký");
@@ -162,27 +173,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).send(buffer);
   }
 
-  const employeeIds = [...new Set(registrations.map((r) => r.employeeId))];
-  const tourIds = [...new Set(registrations.map((r) => r.tourId))];
-  const registrationIds = [...new Set(registrations.map((r) => r.id))];
-
-  const [employeesResult, toursResult, companionsBase] = await Promise.all([
-    supabaseAdmin.from("employees").select("*").in("id", employeeIds),
-    supabaseAdmin.from("tours").select("*").in("id", tourIds),
-    supabaseAdmin.from("companions").select("*").in("registration_id", registrationIds),
+  // Full lookup tables, paged past the 1000-row cap.
+  const [employeesResult, toursResult, companionsResult] = await Promise.all([
+    fetchAllRows(() => supabaseAdmin.from("employees").select("*").order("id", { ascending: true })),
+    fetchAllRows(() => supabaseAdmin.from("tours").select("*").order("id", { ascending: true })),
+    fetchAllRows(() => supabaseAdmin.from("companions").select("*").order("id", { ascending: true })),
   ]);
-
-  const companionsResult = companionsBase.error
-    ? await supabaseAdmin.from("companions").select("*").in("registrationId", registrationIds)
-    : companionsBase;
 
   if (employeesResult.error) return res.status(500).json({ error: employeesResult.error.message });
   if (toursResult.error) return res.status(500).json({ error: toursResult.error.message });
   if (companionsResult.error) return res.status(500).json({ error: companionsResult.error.message });
 
-  const employees = ((employeesResult.data as Row[] | null) ?? []).map(normalizeEmployee);
-  const tours = ((toursResult.data as Row[] | null) ?? []).map(normalizeTour);
-  const companions = ((companionsResult.data as Row[] | null) ?? []).map(normalizeCompanion);
+  const employees = employeesResult.data.map(normalizeEmployee);
+  const tours = toursResult.data.map(normalizeTour);
+  const companions = companionsResult.data.map(normalizeCompanion);
 
   const employeeMap = new Map(employees.map((item) => [item.id, item]));
   const tourMap = new Map(tours.map((item) => [item.id, item]));
