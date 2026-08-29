@@ -20,7 +20,7 @@ drop function if exists public.get_registration_by_employee(text);
 
 create or replace function public.get_registration_by_employee(p_employee_id text)
 returns table (
-  id                uuid,
+  id                bigint,
   employee_id       text,
   tour_id           text,
   transport_method  text,
