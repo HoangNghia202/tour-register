@@ -46,7 +46,7 @@ function TransportSection({ control }: TransportSectionProps) {
             <div className="flex items-center gap-2">
               <RadioGroupItem value="self" id="transport-self" />
               <Label htmlFor="transport-self" className="font-normal">
-                Tự túc theo Tour Công ty
+                Tự túc
               </Label>
             </div>
             <div className="flex items-center gap-2">
