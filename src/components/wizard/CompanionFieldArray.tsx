@@ -120,6 +120,7 @@ function CompanionFieldArray({ control }: CompanionFieldArrayProps) {
                       type="date"
                       aria-invalid={isOverCap}
                       {...dobField}
+                      className={!dobField.value ? 'text-muted-foreground/45' : undefined}
                     />
                   )}
                 />
