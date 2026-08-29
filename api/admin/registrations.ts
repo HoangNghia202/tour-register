@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { requireAdminSession } from "../_lib/adminSession.js";
-import { fetchAllRows } from "../_lib/fetchAllRows.js";
 import { supabaseAdmin } from "../../src/lib/supabase/server.js";
 
 type Row = Record<string, unknown>;
@@ -14,12 +13,19 @@ type CompanionView = {
   type: string;
 };
 
+const ALLOWED_PAGE_SIZES = [20, 50, 100];
+const DEFAULT_PAGE_SIZE = 50;
+
 function asString(value: unknown): string {
   return typeof value === "string" ? value : String(value ?? "");
 }
 
 function pick(row: Row, camel: string, snake: string): unknown {
   return row[camel] ?? row[snake];
+}
+
+function firstQueryValue(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 function normalizeRegistration(row: Row) {
@@ -75,47 +81,79 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method Not Allowed" });
   if (!requireAdminSession(req, res)) return;
 
-  // registrations — snake_case ordering, falling back to camelCase column names.
-  let registrationsResult = await fetchAllRows(() =>
-    supabaseAdmin
+  const requestedPageSize = Number(firstQueryValue(req.query.pageSize));
+  const pageSize = ALLOWED_PAGE_SIZES.includes(requestedPageSize)
+    ? requestedPageSize
+    : DEFAULT_PAGE_SIZE;
+
+  const requestedPage = Math.trunc(Number(firstQueryValue(req.query.page)));
+  const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  // One page of registrations + the exact total. snake_case ordering, falling
+  // back to camelCase column names for older schema variants.
+  let pageResult = await supabaseAdmin
+    .from("registrations")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(from, to);
+
+  if (pageResult.error) {
+    pageResult = await supabaseAdmin
       .from("registrations")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false }),
-  );
-
-  if (registrationsResult.error) {
-    registrationsResult = await fetchAllRows(() =>
-      supabaseAdmin
-        .from("registrations")
-        .select("*")
-        .order("createdAt", { ascending: false })
-        .order("id", { ascending: false }),
-    );
+      .select("*", { count: "exact" })
+      .order("createdAt", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, to);
   }
 
-  if (registrationsResult.error) {
-    return res.status(500).json({ error: registrationsResult.error.message });
+  // Range past the last row (e.g. rows were deleted while the admin sat on a
+  // high page): report an empty page with the real total so the client clamps.
+  if (pageResult.error?.code === "PGRST103") {
+    const countOnly = await supabaseAdmin
+      .from("registrations")
+      .select("id", { count: "exact", head: true });
+    return res
+      .status(200)
+      .json({ registrations: [], total: countOnly.count ?? 0, page, pageSize });
   }
 
-  const rows = registrationsResult.data.map(normalizeRegistration);
-  if (rows.length === 0) return res.status(200).json({ registrations: [] });
+  if (pageResult.error) {
+    return res.status(500).json({ error: pageResult.error.message });
+  }
 
-  // Load the lookup tables in full (paged past the 1000-row cap). Fetching every
-  // row instead of filtering by a large id list also avoids URL-length limits.
-  const [employeesResult, toursResult, companionsResult] = await Promise.all([
-    fetchAllRows(() => supabaseAdmin.from("employees").select("*").order("id", { ascending: true })),
-    fetchAllRows(() => supabaseAdmin.from("tours").select("*").order("id", { ascending: true })),
-    fetchAllRows(() => supabaseAdmin.from("companions").select("*").order("id", { ascending: true })),
+  const total = pageResult.count ?? 0;
+  const rows = ((pageResult.data as Row[] | null) ?? []).map(normalizeRegistration);
+
+  if (rows.length === 0) {
+    return res.status(200).json({ registrations: [], total, page, pageSize });
+  }
+
+  // Only the lookups needed for this page (<= pageSize rows) — small id lists.
+  const employeeIds = [...new Set(rows.map((r) => r.employeeId))];
+  const tourIds = [...new Set(rows.map((r) => r.tourId))];
+  const registrationIds = [...new Set(rows.map((r) => r.id))];
+
+  const [employeesResult, toursResult, companionsBase] = await Promise.all([
+    supabaseAdmin.from("employees").select("*").in("id", employeeIds),
+    supabaseAdmin.from("tours").select("*").in("id", tourIds),
+    supabaseAdmin.from("companions").select("*").in("registration_id", registrationIds),
   ]);
+
+  const companionsResult = companionsBase.error
+    ? await supabaseAdmin.from("companions").select("*").in("registrationId", registrationIds)
+    : companionsBase;
 
   if (employeesResult.error) return res.status(500).json({ error: employeesResult.error.message });
   if (toursResult.error) return res.status(500).json({ error: toursResult.error.message });
   if (companionsResult.error) return res.status(500).json({ error: companionsResult.error.message });
 
-  const employees = employeesResult.data.map(normalizeEmployee);
-  const tours = toursResult.data.map(normalizeTour);
-  const companions = companionsResult.data.map(normalizeCompanion);
+  const employees = ((employeesResult.data as Row[] | null) ?? []).map(normalizeEmployee);
+  const tours = ((toursResult.data as Row[] | null) ?? []).map(normalizeTour);
+  const companions = ((companionsResult.data as Row[] | null) ?? []).map(normalizeCompanion);
 
   const employeeMap = new Map(employees.map((item) => [item.id, item]));
   const tourMap = new Map(tours.map((item) => [item.id, item]));
@@ -141,5 +179,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     companions: companionsByRegistration.get(row.id) ?? [],
   }));
 
-  return res.status(200).json({ registrations });
+  return res.status(200).json({ registrations, total, page, pageSize });
 }

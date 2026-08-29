@@ -1,9 +1,25 @@
 import { useEffect, useState } from 'react'
 import { AlertCircle, Download } from 'lucide-react'
-import { getAllRegistrationsWithDetails, SessionExpiredError } from '@/lib/api'
-import type { Employee, Registration, Tour } from '@/types/domain'
+import { getRegistrationsPage, SessionExpiredError, type RegistrationsPage } from '@/lib/api'
+import type { Registration } from '@/types/domain'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 import {
   Table,
   TableBody,
@@ -13,7 +29,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-type RegistrationWithDetails = Registration & { employee: Employee; tour: Tour }
+const PAGE_SIZE_OPTIONS = [20, 50, 100]
+const DEFAULT_PAGE_SIZE = 50
 
 const currencyFormatter = new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -48,34 +65,68 @@ function formatTransport(registration: Registration): string {
   return registration.pickupPoint ? `Xe tour - ${registration.pickupPoint}` : 'Xe tour'
 }
 
+type PageToken = number | 'ellipsis-left' | 'ellipsis-right'
+
+// 1 … 4 5 6 … 40  — always show first/last, a window around the current page.
+function getPageWindow(current: number, totalPages: number): PageToken[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1)
+  }
+
+  const tokens: PageToken[] = [1]
+  const start = Math.max(2, current - 1)
+  const end = Math.min(totalPages - 1, current + 1)
+
+  if (start > 2) tokens.push('ellipsis-left')
+  for (let page = start; page <= end; page += 1) tokens.push(page)
+  if (end < totalPages - 1) tokens.push('ellipsis-right')
+
+  tokens.push(totalPages)
+  return tokens
+}
+
 interface RegistrationsTableProps {
   onSessionExpired: () => void
 }
 
 function RegistrationsTable({ onSessionExpired }: RegistrationsTableProps) {
-  const [registrations, setRegistrations] = useState<RegistrationWithDetails[] | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
+  const [data, setData] = useState<RegistrationsPage | null>(null)
   const [loadError, setLoadError] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
-  const load = async () => {
-    setLoadError(false)
-    try {
-      const data = await getAllRegistrationsWithDetails()
-      setRegistrations(data)
-    } catch (err) {
-      if (err instanceof SessionExpiredError) {
-        onSessionExpired()
-        return
-      }
-      setLoadError(true)
-    }
-  }
-
   useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    let cancelled = false
+    setIsLoading(true)
+    setLoadError(false)
+
+    getRegistrationsPage(page, pageSize)
+      .then((result) => {
+        if (cancelled) return
+        setData(result)
+        // Clamp if we ran past the last page (e.g. after page-size change).
+        const totalPages = Math.max(1, Math.ceil(result.total / pageSize))
+        if (page > totalPages) setPage(totalPages)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (err instanceof SessionExpiredError) {
+          onSessionExpired()
+          return
+        }
+        setLoadError(true)
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [page, pageSize, onSessionExpired])
 
   const handleExport = async () => {
     setIsExporting(true)
@@ -111,15 +162,24 @@ function RegistrationsTable({ onSessionExpired }: RegistrationsTableProps) {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>Không thể tải danh sách đăng ký. Vui lòng thử lại.</AlertDescription>
         </Alert>
-        <Button type="button" onClick={load} className="self-start">
+        <Button type="button" onClick={() => setPage((current) => current)} className="self-start">
           Thử lại
         </Button>
       </div>
     )
   }
 
-  if (!registrations) {
+  if (!data) {
     return <p className="text-sm text-muted-foreground">Đang tải...</p>
+  }
+
+  const { registrations, total } = data
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1
+  const rangeEnd = Math.min(page * pageSize, total)
+  const goToPage = (next: number) => {
+    const clamped = Math.min(Math.max(1, next), totalPages)
+    if (clamped !== page) setPage(clamped)
   }
 
   return (
@@ -128,10 +188,11 @@ function RegistrationsTable({ onSessionExpired }: RegistrationsTableProps) {
         <div className="flex flex-col gap-2">
           <h2 className="text-lg font-semibold tracking-tight">Danh sách đăng ký</h2>
           <p className="text-sm text-muted-foreground">
-            Tổng cộng {registrations.length} lượt đăng ký.
+            Tổng cộng {total} lượt đăng ký
+            {total > 0 && ` · đang xem ${rangeStart}–${rangeEnd}`}.
           </p>
         </div>
-        <Button type="button" onClick={handleExport} disabled={registrations.length === 0 || isExporting}>
+        <Button type="button" onClick={handleExport} disabled={total === 0 || isExporting}>
           <Download className="h-4 w-4" />
           {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
         </Button>
@@ -144,9 +205,14 @@ function RegistrationsTable({ onSessionExpired }: RegistrationsTableProps) {
         </Alert>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <Table>
-          <TableHeader>
+      <div className="relative overflow-hidden rounded-lg border border-border">
+        {isLoading && (
+          <div className="absolute inset-0 z-20 flex items-start justify-center bg-background/60 pt-6 text-sm text-muted-foreground">
+            Đang tải...
+          </div>
+        )}
+        <Table containerClassName="max-h-[600px]">
+          <TableHeader className="sticky top-0 z-10 bg-background [&_th]:bg-background">
             <TableRow>
               <TableHead className="min-w-[80px]">MSNV</TableHead>
               <TableHead className="min-w-[160px]">Họ tên</TableHead>
@@ -201,6 +267,81 @@ function RegistrationsTable({ onSessionExpired }: RegistrationsTableProps) {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Số dòng mỗi trang</span>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) => {
+              setPageSize(Number(value))
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="h-8 w-[84px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={String(option)}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {totalPages > 1 && (
+          <Pagination className={`sm:mx-0 sm:w-auto ${isLoading ? 'pointer-events-none opacity-60' : ''}`}>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  aria-disabled={page <= 1}
+                  className={page <= 1 ? 'pointer-events-none opacity-50' : undefined}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    goToPage(page - 1)
+                  }}
+                />
+              </PaginationItem>
+
+              {getPageWindow(page, totalPages).map((token) =>
+                typeof token === 'number' ? (
+                  <PaginationItem key={token}>
+                    <PaginationLink
+                      href="#"
+                      isActive={token === page}
+                      onClick={(event) => {
+                        event.preventDefault()
+                        goToPage(token)
+                      }}
+                    >
+                      {token}
+                    </PaginationLink>
+                  </PaginationItem>
+                ) : (
+                  <PaginationItem key={token}>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                ),
+              )}
+
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  aria-disabled={page >= totalPages}
+                  className={page >= totalPages ? 'pointer-events-none opacity-50' : undefined}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    goToPage(page + 1)
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        )}
       </div>
     </div>
   )

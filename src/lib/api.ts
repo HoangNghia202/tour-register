@@ -201,17 +201,36 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
-export async function getAllRegistrationsWithDetails(): Promise<
-  Array<Registration & { employee: Employee; tour: Tour }>
-> {
-  const response = await fetch("/api/admin/registrations", { credentials: "include" });
-  const body = await parseJsonResponse<{ registrations: RawRecord[] }>(response);
+export interface RegistrationsPage {
+  registrations: Array<Registration & { employee: Employee; tour: Tour }>;
+  total: number;
+  page: number;
+  pageSize: number;
+}
 
-  return (body.registrations ?? []).map((item) => ({
-    ...mapRegistration(item),
-    employee: mapEmployee((item.employee as RawRecord) ?? {}),
-    tour: mapTour((item.tour as RawRecord) ?? {}),
-  }));
+export async function getRegistrationsPage(
+  page: number,
+  pageSize: number,
+): Promise<RegistrationsPage> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  const response = await fetch(`/api/admin/registrations?${params}`, { credentials: "include" });
+  const body = await parseJsonResponse<{
+    registrations: RawRecord[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }>(response);
+
+  return {
+    registrations: (body.registrations ?? []).map((item) => ({
+      ...mapRegistration(item),
+      employee: mapEmployee((item.employee as RawRecord) ?? {}),
+      tour: mapTour((item.tour as RawRecord) ?? {}),
+    })),
+    total: Number(body.total ?? 0),
+    page: Number(body.page ?? page),
+    pageSize: Number(body.pageSize ?? pageSize),
+  };
 }
 
 export async function updateTourConfig(
