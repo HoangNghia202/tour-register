@@ -22,6 +22,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   TOO_MANY_CHILDREN: "Tối đa 2 trẻ em đi kèm.",
   ROUTE_PRICE_NOT_FOUND:
     "Chưa có cấu hình giá cho lộ trình này, vui lòng liên hệ quản trị.",
+  RESUBMIT_LIMIT_REACHED: "Bạn đã sử dụng lượt đăng ký lại.",
+  NO_EXISTING_REGISTRATION: "Không tìm thấy đăng ký trước đó để đăng ký lại.",
 };
 
 interface CompanionInput {
@@ -47,6 +49,7 @@ interface RpcRegistrationLike {
   created_at?: unknown;
   createdAt?: unknown;
   total_price?: unknown;
+  resubmit_count?: unknown;
 }
 
 function isValidCompanion(companion: CompanionInput): boolean {
@@ -131,7 +134,8 @@ function toRegistrationCompanions(companions: CompanionInput[]) {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method Not Allowed" });
 
-  const { employeeId, tourId, transportMethod, pickupPoint, companions } = req.body ?? {};
+  const { employeeId, tourId, transportMethod, pickupPoint, companions, resubmit } = req.body ?? {};
+  const isResubmit = resubmit === true;
   const normalizedCompanions = Array.isArray(companions) ? (companions as CompanionInput[]) : [];
 
   if (typeof employeeId !== "string" || !employeeId.trim()) {
@@ -176,10 +180,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       p_total_price: 0,
     };
 
-    let { data, error } = await supabaseAdmin.rpc("submit_registration", rpcPayload);
+    let { data, error } = await supabaseAdmin.rpc(
+      isResubmit ? "resubmit_registration" : "submit_registration",
+      rpcPayload,
+    );
 
     // Backward compatibility: some DB versions define submit_registration without p_total_price.
-    if (error && (error.message ?? "").includes("submit_registration") && (error.message ?? "").includes("does not exist")) {
+    if (!isResubmit && error && (error.message ?? "").includes("submit_registration") && (error.message ?? "").includes("does not exist")) {
       ({ data, error } = await supabaseAdmin.rpc("submit_registration", {
         p_employee_id: employeeId,
         p_tour_id: normalizedTourId,
@@ -210,6 +217,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       (data as Record<string, unknown> | null)?.total_price ?? 0,
     );
     const rpcTotalPrice = Number.isFinite(parsedTotalPrice) ? parsedTotalPrice : 0;
+    const parsedResubmitCount = Number(rpcRegistration.resubmit_count ?? (isResubmit ? 1 : 0));
     const registration = {
       id: String(rpcRegistration.id ?? rpcRegistration.registration_id ?? rpcRegistration.registrationId ?? ""),
       employeeId,
@@ -218,6 +226,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       pickupPoint: transportMethod === "tour_bus" ? pickupPoint : null,
       companions: toRegistrationCompanions(normalizedCompanions),
       totalPrice: rpcTotalPrice,
+      resubmitCount: Number.isFinite(parsedResubmitCount) ? parsedResubmitCount : isResubmit ? 1 : 0,
       createdAt: String(rpcRegistration.created_at ?? rpcRegistration.createdAt ?? new Date().toISOString()),
     };
 

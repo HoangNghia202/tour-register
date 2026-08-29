@@ -106,6 +106,7 @@ function mapRegistration(raw: RawRecord): Registration {
     pickupPoint: (getValue(raw, "pickupPoint", "pickup_point") as Registration["pickupPoint"]) ?? null,
     companions: companionsRaw.filter(Boolean).map((item) => mapCompanion(item as RawRecord)),
     totalPrice: Number(getValue(raw, "totalPrice", "total_price") ?? 0),
+    resubmitCount: Number(getValue(raw, "resubmitCount", "resubmit_count") ?? 0),
     createdAt: String(getValue(raw, "createdAt", "created_at") ?? ""),
   };
 }
@@ -253,13 +254,14 @@ export async function importEmployees(
 }
 
 export async function submitRegistration(
-  input: Omit<Registration, "id" | "createdAt" | "totalPrice">,
+  input: Omit<Registration, "id" | "createdAt" | "totalPrice" | "resubmitCount">,
+  options?: { resubmit?: boolean },
 ): Promise<{ ok: true; registration: Registration } | { ok: false; error: string }> {
   try {
     const response = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
+      body: JSON.stringify({ ...input, resubmit: options?.resubmit ?? false }),
     });
 
     const body = await response.json().catch(() => null);

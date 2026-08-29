@@ -45,6 +45,25 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      keyframes: {
+        "overlay-fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
+        "overlay-fade-out": { from: { opacity: "1" }, to: { opacity: "0" } },
+        // Fade only — transform stays translate(-50%, -50%) so the dialog never moves.
+        "dialog-fade-in": {
+          from: { opacity: "0", transform: "translate(-50%, -50%)" },
+          to: { opacity: "1", transform: "translate(-50%, -50%)" },
+        },
+        "dialog-fade-out": {
+          from: { opacity: "1", transform: "translate(-50%, -50%)" },
+          to: { opacity: "0", transform: "translate(-50%, -50%)" },
+        },
+      },
+      animation: {
+        "overlay-fade-in": "overlay-fade-in 150ms ease-out",
+        "overlay-fade-out": "overlay-fade-out 150ms ease-in",
+        "dialog-fade-in": "dialog-fade-in 150ms ease-out",
+        "dialog-fade-out": "dialog-fade-out 150ms ease-in",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

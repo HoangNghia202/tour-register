@@ -50,6 +50,8 @@ export interface Registration {
   pickupPoint: PickupPoint | null;
   companions: Companion[];
   totalPrice: number;
+  /** 0 = chưa dùng lượt đăng ký lại, 1 = đã dùng (ẩn nút "Đăng ký lại"). */
+  resubmitCount: number;
   createdAt: string;
 }
 

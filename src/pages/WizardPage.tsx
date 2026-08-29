@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { findEmployeeById, findRegistrationByEmployeeId, getTourById } from '../lib/api'
 import type { Employee, Registration, Tour } from '../types/domain'
 import WizardLayout from '../components/wizard/WizardLayout'
@@ -20,7 +20,11 @@ const stepLabels: Record<WizardStep, string> = {
 function WizardPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const { employeeId, tourId } = useParams<{ employeeId?: string; tourId?: string }>()
+
+  const isResubmit = searchParams.get('resubmit') === '1'
+  const resubmitQuery = isResubmit ? '?resubmit=1' : ''
 
   const [isLoadingRouteData, setIsLoadingRouteData] = useState(false)
   const [routeError, setRouteError] = useState<string | null>(null)
@@ -186,13 +190,14 @@ function WizardPage() {
           employee={employee}
           onTourSelected={(tour) => {
             setSelectedTour(tour)
-            navigate(`/register/${employee.id}/${tour.id}`)
+            navigate(`/register/${employee.id}/${tour.id}${resubmitQuery}`)
           }}
         />
       ) : currentStep === 'register' && employee && selectedTour ? (
         <RegistrationFormScreen
           employee={employee}
           tour={selectedTour}
+          resubmit={isResubmit}
           onSubmitted={(nextRegistration) => {
             setRegistration(nextRegistration)
             navigate(`/ticket/${employee.id}`)

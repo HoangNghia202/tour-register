@@ -69,9 +69,11 @@ interface RegistrationFormScreenProps {
   employee: Employee
   tour: Tour
   onSubmitted: (registration: Registration) => void
+  /** true khi nhân viên đang dùng lượt "đăng ký lại" — sẽ ghi đè đăng ký cũ. */
+  resubmit?: boolean
 }
 
-function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFormScreenProps) {
+function RegistrationFormScreen({ tour, employee, onSubmitted, resubmit = false }: RegistrationFormScreenProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [pricing, setPricing] = useState<Record<string, number> | null>(null)
   const [pricingError, setPricingError] = useState(false)
@@ -140,13 +142,16 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
       type: classifyAge(companion.dob),
     }))
 
-    const result = await submitRegistration({
-      employeeId: employee.id,
-      tourId: tour.id,
-      transportMethod: values.transportMethod,
-      pickupPoint: values.pickupPoint,
-      companions,
-    })
+    const result = await submitRegistration(
+      {
+        employeeId: employee.id,
+        tourId: tour.id,
+        transportMethod: values.transportMethod,
+        pickupPoint: values.pickupPoint,
+        companions,
+      },
+      { resubmit },
+    )
 
     if (!result.ok) {
       setSubmitError(result.error)
@@ -161,13 +166,20 @@ function RegistrationFormScreen({ tour, employee, onSubmitted }: RegistrationFor
       <div className="flex flex-col gap-1">
         <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
           <ClipboardList className="h-5 w-5 text-teal-900" />
-          Thông tin đăng ký
+          Thông tin đăng ký tour {tour.name}
         </h2>
-        <p className="text-sm text-muted-foreground">{tour.name}</p>
-        <p className="text-xs text-muted-foreground">
-          <span className="text-destructive">*</span> Trường bắt buộc
-        </p>
+
       </div>
+
+      {resubmit && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Đây là lượt đăng ký lại. Khi bạn xác nhận, thông tin đăng ký trước đó sẽ bị thay thế
+            hoàn toàn và bạn sẽ không thể đăng ký lại thêm lần nữa.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <CompanionFieldArray control={control} />
 
