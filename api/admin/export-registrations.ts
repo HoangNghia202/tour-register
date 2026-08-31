@@ -37,6 +37,8 @@ function normalizeRegistration(row: Row) {
     id: asString(pick(row, "id", "id")),
     employeeId: asString(pick(row, "employeeId", "employee_id")),
     tourId: asString(pick(row, "tourId", "tour_id")),
+    transportMethod: asString(pick(row, "transportMethod", "transport_method")),
+    pickupPoint: asString(pick(row, "pickupPoint", "pickup_point")),
     totalPrice: Number(pick(row, "totalPrice", "total_price") ?? 0),
     createdAt: asString(pick(row, "createdAt", "created_at")),
   };
@@ -82,6 +84,14 @@ function formatGender(gender: "male" | "female"): string {
   return gender === "male" ? "Nam" : "Nữ";
 }
 
+function formatTransport(transportMethod: string, pickupPoint: string): string {
+  if (transportMethod === "tour_bus") {
+    return pickupPoint ? `Di chuyển theo Xe Tour (Điểm đón: ${pickupPoint})` : "Di chuyển theo Xe Tour";
+  }
+  if (transportMethod === "self") return "Tự túc";
+  return transportMethod || "-";
+}
+
 function formatCompanionDetails(companions: CompanionRow[]): string {
   if (companions.length === 0) return "Không có";
   return companions
@@ -118,7 +128,7 @@ function applySheetStyle(worksheet: ExcelJS.Worksheet): void {
     });
   });
 
-  worksheet.getColumn(9).numFmt = "#,##0";
+  worksheet.getColumn("totalPrice").numFmt = "#,##0";
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -155,6 +165,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { header: "MSNV", key: "msnv", width: 12 },
       { header: "Họ tên", key: "fullName", width: 24 },
       { header: "Tour", key: "tour", width: 24 },
+      { header: "Phương thức di chuyển", key: "transport", width: 32 },
       { header: "Người thân đi cùng", key: "companions", width: 52 },
       { header: "Số người lớn", key: "adultCount", width: 14 },
       { header: "Số trẻ em", key: "childCount", width: 12 },
@@ -207,6 +218,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       msnv: employee?.id ?? "",
       fullName: employee?.fullName ?? "",
       tour: tour?.name ?? "",
+      transport: formatTransport(registration.transportMethod, registration.pickupPoint),
       companions: formatCompanionDetails(companionRows),
       adultCount: countByType(companionRows, "adult"),
       childCount: countByType(companionRows, "child"),
@@ -222,6 +234,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     { header: "MSNV", key: "msnv", width: 12 },
     { header: "Họ tên", key: "fullName", width: 24 },
     { header: "Tour", key: "tour", width: 24 },
+    { header: "Phương thức di chuyển", key: "transport", width: 32 },
     { header: "Người thân đi cùng", key: "companions", width: 52 },
     { header: "Số người lớn", key: "adultCount", width: 14 },
     { header: "Số trẻ em", key: "childCount", width: 12 },
